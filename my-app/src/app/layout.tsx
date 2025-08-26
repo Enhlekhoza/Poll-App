@@ -1,31 +1,51 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { Toaster } from "sonner"
 import './globals.css'
-import { Header } from '@/components/layout/header'
-import { Footer } from 
-'@/components/layout/footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Polling App',
-  description: 'Create and vote on polls',
+  title: 'Poll App',
+  description: 'Create and share polls easily',
 }
 
 export default function RootLayout({
-  children,
+    children,
 }: {
-  children: React.ReactNode
+    children: React.ReactNode
 }) {
-  return (
-    <html lang="en">
-      <body className={inter.className}>
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          {children}
-        </main>
-        <Footer />
-      </body>
-    </html>
-  )
+    return (
+        <html lang="en">
+            <body className={inter.className}>
+                <AuthProvider>
+                    {children}
+                    <Toaster />
+                </AuthProvider>
+            </body>
+        </html>
+    )
+}
+
+// src/types/index.ts
+export interface Poll {
+    id: string
+    title: string
+    description?: string
+    options: PollOption[]
+    created_at: string
+    user_id: string
+}
+
+export interface PollOption {
+    id: string
+    text: string
+    votes: number
+}
+
+export interface User {
+    id: string
+    email: string
+    username: string
 }

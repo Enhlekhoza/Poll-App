@@ -1,0 +1,48 @@
+ {
+   "name": "Polling App Assistant Rules",
+   "description": "Rules for generating code for the Next.js and Supabase Polling App.",
+   "rules": [
+     {
+       "name": "Routing and File Structure",
+       "description": "Use Next.js App Router conventions for all new pages and routes. Feature-specific pages should be grouped in subdirectories within `/app`. For example, all poll-related pages are in `/app/polls/`.",
+       "guidelines": [
+         "Create new pages as `page.tsx` files inside a corresponding folder in the `/app` directory (e.g., `/app/polls/create/page.tsx`).",
+         "API routes should be placed in `/app/api/`.",
+         "Use the `useRouter` hook from `next/navigation` for client-side navigation."
+       ]
+     },
+     {
+       "name": "UI Components",
+       "description": "The project uses shadcn/ui for the component library. All UI should be built composing these components.",
+       "guidelines": [
+         "Import UI components like `Card`, `Button`, and `Input` from `@/components/ui/...`.",
+         "Create custom, feature-specific components inside `@/components`. For example, a form for creating polls is located at `@/components/polls/poll-form.tsx`.",
+         "Use `lucide-react` for icons."
+       ]
+     },
+     {
+       "name": "Authentication",
+       "description": "Client-side authentication is handled through a custom React Context.",
+       "guidelines": [
+         "For pages or components that require authentication, use the `useAuth()` hook from `@/contexts/AuthContext` to access the `user` and `loading` state.",
+         "In client components (`\"use client\"`), protect routes by using a `useEffect` hook to check for the user's authentication status. If the user is not authenticated and loading is complete, redirect them to the login page (`/auth/login`)."
+       ]
+     },
+     {
+       "name": "Supabase Usage",
+       "description": "A single, shared Supabase client instance should be used for all backend interactions.",
+       "guidelines": [
+         "Do not initialize a new Supabase client directly in components or pages. Import and use the existing client instance from a utility file (e.g., `lib/supabase/client.ts`).",
+         "Use the Supabase client for all database queries (e.g., `supabase.from('polls').select()`) and authentication calls (`supabase.auth.signInWithPassword(...)`)."
+       ]
+     },
+     {
+       "name": "Forms and User Feedback",
+       "description": "Use react-hook-form for managing form state and validation, and sonner for toast notifications.",
+       "guidelines": [
+         "When creating forms, use the `react-hook-form` library.",
+         "For user feedback after an action (e.g., successful poll creation, error message), use the `toast()` function from the `sonner` library."
+       ]
+     }
+   ]
+ }

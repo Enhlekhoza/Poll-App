@@ -17,18 +17,15 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="h-12 px-6 text-base gap-2">
-              <Link href="/polls/create">
-                <Plus size={20} />
-                Create Poll
-              </Link>
-            </Button>
-            <Button variant="outline" asChild size="lg" className="h-12 px-6 text-base gap-2">
-              <Link href="/polls">
-                <BarChart3 size={20} />
-                View Polls
-                <ArrowRight size={16} />
-              </Link>
-            </Button>
+          <Link href="/auth/login?redirect=/polls/create">
+            <Plus size={20} /> Create Poll
+          </Link>
+        </Button>
+        <Button variant="outline" asChild size="lg" className="h-12 px-6 text-base gap-2">
+          <Link href="/polls"> {/* Viewing polls can be public */}
+            <BarChart3 size={20} /> View Polls <ArrowRight size={16} />
+          </Link>
+        </Button>
           </div>
         </div>
 

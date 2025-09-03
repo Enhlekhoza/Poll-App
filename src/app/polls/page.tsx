@@ -2,17 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import ProtectedRoute from "@/components/ProtectedRoute"
+import { PollCard } from "@/components/polls/poll-card"
+import { Poll } from "@/types"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
-interface Poll {
-  id: string
-  title: string
-  description: string | null
-  created_at: string
-  user_id: string
-}
+// Poll type is imported from @/types
 
 export default function PollsPage() {
   const [polls, setPolls] = useState<Poll[]>([])
@@ -20,42 +17,78 @@ export default function PollsPage() {
 
   useEffect(() => {
     const fetchPolls = async () => {
-      const { data, error } = await supabase.from("polls").select("*").order("created_at", { ascending: false })
-      if (!error && data) setPolls(data)
-      setLoading(false)
+      try {
+        const { data, error } = await supabase
+          .from('polls')
+          .select(`
+            *,
+            options:poll_options(*)
+          `)
+          .order('created_at', { ascending: false })
+        
+        if (error) throw error
+        
+        // Transform the data to match our Poll type
+        const transformedPolls: Poll[] = data.map((poll: any) => ({
+          id: poll.id,
+          question: poll.question,
+          description: poll.description,
+          user_id: poll.user_id,
+          created_at: poll.created_at,
+          options: poll.options.map((option: any) => ({
+            id: option.id,
+            poll_id: option.poll_id,
+            text: option.text,
+            votes: option.votes || 0
+          }))
+        }))
+        
+        setPolls(transformedPolls)
+      } catch (error: any) {
+        console.error('Error fetching polls:', error.message)
+      } finally {
+        setLoading(false)
+      }
     }
+    
     fetchPolls()
   }, [])
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen"><p>Loading polls...</p></div>
-  if (polls.length === 0) return <div className="flex items-center justify-center min-h-screen"><p>No polls yet.</p></div>
-
-  return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">All Polls</h1>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+  
+  if (polls.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <h2 className="text-xl font-medium">No polls available</h2>
         <Link href="/polls/create">
-          <Button>Create Poll</Button>
+          <Button>Create Your First Poll</Button>
         </Link>
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
+    )
+  }
+
+  return (
+    <ProtectedRoute>
+      <div className="container mx-auto py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">All Polls</h1>
+          <Link href="/polls/create">
+            <Button>Create Poll</Button>
+          </Link>
+        </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {polls.map(poll => (
-          <Card key={poll.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>{poll.title}</CardTitle>
-              {poll.description && <CardDescription>{poll.description}</CardDescription>}
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Created at: {new Date(poll.created_at).toLocaleString()}
-              </p>
-              <Link href={`/polls/${poll.id}`} className="mt-4 inline-block">
-                <Button variant="outline">View Poll</Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <div key={poll.id} className="hover:shadow-lg transition-shadow">
+            <PollCard poll={poll} />
+          </div>
         ))}
       </div>
-    </div>
+    </ProtectedRoute>
   )
 }

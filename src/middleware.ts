@@ -11,7 +11,15 @@ export async function middleware(req: NextRequest) {
     } = await supabase.auth.getSession()
 
     if (!session && req.nextUrl.pathname.startsWith('/polls')) {
-        return NextResponse.redirect(new URL('/auth/login', req.url))
+        // Create a redirect URL with the full pathname including search params
+        const redirectUrl = new URL('/auth/login', req.url)
+        
+        // Use the full URL path with query parameters for the redirect
+        const fullPath = req.nextUrl.pathname + req.nextUrl.search
+        redirectUrl.searchParams.set('redirect', fullPath)
+        
+        // Use 307 temporary redirect to ensure method and body are preserved
+        return NextResponse.redirect(redirectUrl, 307)
     }
 
     return res

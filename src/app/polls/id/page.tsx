@@ -1,6 +1,9 @@
+"use client"
+
 import { PollCard } from '@/components/polls/poll-card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 // Mock data - replace with actual data fetching
 const mockPolls = [
@@ -11,7 +14,8 @@ const mockPolls = [
 
 export default function PollsPage() {
   return (
-    <div className="space-y-6">
+    <ProtectedRoute>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">All Polls</h1>
         <Button asChild>
@@ -25,5 +29,6 @@ export default function PollsPage() {
         ))}
       </div>
     </div>
+    </ProtectedRoute>
   )
 }

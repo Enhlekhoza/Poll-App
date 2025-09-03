@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,27 +8,34 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/contexts/AuthContext"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" })
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const { signIn } = useAuth()
+  const searchParams = useSearchParams()
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  try {
-    const { error, data } = await supabase.auth.signInWithPassword(formData);
-    if (error) throw error;
-    console.log("LoginPage: login successful, data =", data);
-    toast.success("Successfully logged in!");
-  } catch (err) {
-    console.error("LoginPage error:", err);
-    toast.error(err instanceof Error ? err.message : "Login failed");
-  } finally {
-    setLoading(false);
-  }
-};
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await signIn(formData.email, formData.password);
+      if (error) throw error;
+      
+      // Success message
+      toast.success("Successfully logged in!");
+      
+      // Redirect is handled by AuthContext
+    } catch (err) {
+      console.error("LoginPage error:", err);
+      toast.error(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">

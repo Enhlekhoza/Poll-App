@@ -1,8 +1,13 @@
 import "./globals.css"
-import { Inter } from "next/font/google"
+import { Inter as NextInter } from "next/font/google"
 import ClientProviders from "./ClientProviders"
 
-const inter = Inter({ subsets: ["latin"] })
+// Modified font configuration to avoid module resolution issues
+const inter = NextInter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter"
+})
 
 export const metadata = {
   title: "Poll App",
@@ -12,7 +17,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} ${inter.variable}`}>
         <ClientProviders>
           {children}
         </ClientProviders>

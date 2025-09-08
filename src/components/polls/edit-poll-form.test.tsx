@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { EditPollForm } from './edit-poll-form'
 import type { Poll, PollOption } from '@/types'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/supabase'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 

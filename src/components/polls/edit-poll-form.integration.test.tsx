@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { EditPollForm } from './edit-poll-form'
 import { createMockPoll, setupSuccessfulSupabaseMock, setupErrorSupabaseMock } from './edit-poll-form.test.utils'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/supabase'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 

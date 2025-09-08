@@ -27,7 +27,7 @@ export default function LoginPage() {
       
       // Success message
       toast.success("Successfully logged in!");
-      
+      22
       // Redirect is handled by AuthContext
     } catch (err) {
       console.error("LoginPage error:", err);
@@ -81,7 +81,7 @@ export default function LoginPage() {
             </Button>
           </form>
           <p className="mt-4 text-center text-sm">
-            Don't have an account? <Link href="/auth/register" className="text-blue-600">Sign up</Link>
+            Don&apos;t have an account? <Link href="/auth/register" className="text-blue-600">Sign up</Link>
           </p>
         </CardContent>
       </Card>

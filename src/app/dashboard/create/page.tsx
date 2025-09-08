@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { X } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase/supabase"
 import ProtectedRoute from "@/components/ProtectedRoute"
 
 // Define the schema for the form, ensuring at least two options are provided.
@@ -86,9 +86,13 @@ export default function CreatePollPage() {
       toast.success("Poll created successfully!")
       form.reset() // Reset the form to default values
       router.push("/polls") // Redirect to the polls list page
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error creating poll:", error)
-      toast.error(error.message || "An error occurred while creating the poll")
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error("An error occurred while creating the poll")
+      }
     }
   }
 

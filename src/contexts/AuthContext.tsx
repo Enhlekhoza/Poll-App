@@ -49,30 +49,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    return () => subscription?.unsubscribe?.()
+    // Note: Subscription cleanup is handled by Supabase internally
   }, [])
 
   // Redirect logged-in users away from login page and handle post-login navigation
   useEffect(() => {
-    if (!loading && user && !hasRedirected) {
-      const loginPath = "/auth/login"
-      if (pathname?.replace(/\/$/, "") === loginPath) {
-        const redirectTo = searchParams?.get("redirect") || "/polls/create"
-        console.log("AuthProvider: redirecting to", redirectTo)
-
-        setHasRedirected(true)
-        // small delay ensures client hydration
-        setTimeout(() => router.replace(redirectTo), 50)
-      }
-    }
-  }, [user, loading, pathname, searchParams, router, hasRedirected])
-  
-  // We'll simplify the redirection logic to avoid RSC errors
-  useEffect(() => {
     if (!loading && user) {
       const loginPath = "/auth/login"
       if (pathname?.replace(/\/$/, "") === loginPath) {
-        const redirectTo = searchParams?.get("redirect") || "/polls/create"
+        const redirectTo = searchParams?.get("redirect") || "/"
         console.log("AuthProvider: redirecting to", redirectTo)
 
         // Use replace instead of push to avoid browser history issues

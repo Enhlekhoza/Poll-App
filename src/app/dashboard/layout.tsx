@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { ReactNode, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ReactNode, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,106 +12,217 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/app/lib/context/auth-context";
+} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  BarChart3,
+  Plus,
+  Settings,
+  Users,
+  Menu,
+  LogOut,
+  User,
+  Home,
+  PieChart,
+  TrendingUp,
+  Bell,
+  Search,
+} from 'lucide-react';
+
+const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
+  { name: 'Create Poll', href: '/dashboard/create', icon: Plus },
+  { name: 'My Polls', href: '/dashboard/polls', icon: BarChart3 },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
+  { name: 'Users', href: '/dashboard/users', icon: Users },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
+    if (!user) {
+      router.push('/auth/login');
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     await signOut();
-    router.push("/login");
+    router.push('/login');
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <p>Loading user session...</p>
+  const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
+    <div
+      className={`flex flex-col h-full ${
+        mobile ? 'w-full' : 'w-64'
+      } bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white`}
+    >
+      {/* Logo */}
+      <div className="flex items-center justify-center h-16 px-4 border-b border-slate-700">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            PollMaster
+          </span>
+        </div>
       </div>
-    );
-  }
 
-  if (!user) {
-    return null;
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <header className="border-b bg-white sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/polls" className="text-xl font-bold text-slate-800">
-            ALX Polly
-          </Link>
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link href="/polls" className="text-slate-600 hover:text-slate-900">
-              My Polls
-            </Link>
+      {/* Navigation */}
+      <nav className="flex-1 px-4 py-6 space-y-2">
+        {navigation.map((item) => {
+          const isActive = pathname === item.href;
+          return (
             <Link
-              href="/create"
-              className="text-slate-600 hover:text-slate-900"
+              key={item.name}
+              href={item.href}
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                isActive
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+              onClick={() => mobile && setSidebarOpen(false)}
             >
-              Create Poll
+              <item.icon className="w-5 h-5 mr-3" />
+              {item.name}
             </Link>
-          </nav>
-          <div className="flex items-center space-x-4">
-            <Button asChild>
-              <Link href="/create">Create Poll</Link>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="relative h-8 w-8 rounded-full"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={
-                        user?.user_metadata?.avatar_url ||
-                        "/placeholder-user.jpg"
-                      }
-                      alt={user?.email || "User"}
-                    />
-                    <AvatarFallback>
-                      {user?.email ? user.email[0].toUpperCase() : "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Link href="/profile" className="w-full">
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/settings" className="w-full">
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          );
+        })}
+      </nav>
+
+      {/* User Profile */}
+      <div className="p-4 border-t border-slate-700">
+        <div className="flex items-center space-x-3">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={user?.user_metadata?.avatar_url} />
+            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+              {user?.email?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+            </p>
+            <p className="text-xs text-slate-400 truncate">{user?.email}</p>
           </div>
         </div>
-      </header>
-      <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
-      <footer className="border-t bg-white py-4">
-        <div className="container mx-auto px-4 text-center text-sm text-slate-500">
-          &copy; {new Date().getFullYear()} ALX Polly. All rights reserved.
-        </div>
-      </footer>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-slate-50">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:flex-shrink-0">
+        <Sidebar />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="p-0 w-64">
+          <Sidebar mobile />
+        </SheetContent>
+      </Sheet>
+
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top Header */}
+        <header className="bg-white shadow-sm border-b border-slate-200">
+          <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center">
+              {/* Mobile menu button */}
+              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="lg:hidden">
+                    <Menu className="w-6 h-6" />
+                  </Button>
+                </SheetTrigger>
+              </Sheet>
+
+              {/* Search */}
+              <div className="hidden md:block ml-4">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search polls..."
+                    className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              {/* Notifications */}
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white"></span>
+              </Button>
+
+              {/* User Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user?.user_metadata?.avatar_url} />
+                      <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                        {user?.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {children}
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,41 +1,103 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/lib/supabase/supabase';
 
-// Mock data for a single poll
-const mockPoll = {
-  id: '1',
-  title: 'Favorite Programming Language',
-  description: 'What programming language do you prefer to use?',
-  options: [
-    { id: '1', text: 'JavaScript', votes: 15 },
-    { id: '2', text: 'Python', votes: 12 },
-    { id: '3', text: 'Java', votes: 8 },
-    { id: '4', text: 'C#', votes: 5 },
-    { id: '5', text: 'Go', votes: 2 },
-  ],
-  totalVotes: 42,
-  createdAt: '2023-10-15',
-  createdBy: 'John Doe',
-};
+interface PollOption {
+  id: string;
+  poll_id: string;
+  text: string;
+  votes: number;
+}
+
+interface Poll {
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  user_id: string;
+  options: PollOption[];
+}
 
 export default function PollDetailPage({ params }: { params: { id: string } }) {
+  const [poll, setPoll] = useState<Poll | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // In a real app, you would fetch the poll data based on the ID
-  const poll = mockPoll;
+  useEffect(() => {
+    const fetchPoll = async () => {
+      try {
+        const { data: pollData, error: pollError } = await supabase
+          .from('polls')
+          .select('*')
+          .eq('id', params.id)
+          .single();
+
+        if (pollError) {
+          setError('Poll not found');
+          setLoading(false);
+          return;
+        }
+
+        const { data: optionsData, error: optionsError } = await supabase
+          .from('poll_options')
+          .select('*')
+          .eq('poll_id', params.id);
+
+        if (optionsError) {
+          setError('Failed to load poll options');
+          setLoading(false);
+          return;
+        }
+
+        const pollWithOptions = {
+          ...pollData,
+          options: optionsData || []
+        };
+
+        setPoll(pollWithOptions);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load poll');
+        setLoading(false);
+      }
+    };
+
+    fetchPoll();
+  }, [params.id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="text-center">Loading poll...</div>
+      </div>
+    );
+  }
+
+  if (error || !poll) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="text-center text-red-500">{error || 'Poll not found'}</div>
+        <Link href="/dashboard/polls" className="text-blue-600 hover:underline">
+          &larr; Back to Polls
+        </Link>
+      </div>
+    );
+  }
+
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
 
   const handleVote = () => {
     if (!selectedOption) return;
-    
+
     setIsSubmitting(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       setHasVoted(true);
@@ -51,12 +113,12 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/polls" className="text-blue-600 hover:underline">
+        <Link href="/dashboard/polls" className="text-blue-600 hover:underline">
           &larr; Back to Polls
         </Link>
         <div className="flex space-x-2">
           <Button variant="outline" asChild>
-            <Link href={`/polls/${params.id}/edit`}>Edit Poll</Link>
+            <Link href={`/dashboard/polls/${params.id}/edit`}>Edit Poll</Link>
           </Button>
           <Button variant="outline" className="text-red-500 hover:text-red-700">
             Delete
@@ -69,21 +131,21 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           <CardTitle className="text-2xl">{poll.title}</CardTitle>
           <CardDescription>{poll.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+         <CardContent className="space-y-4">
           {!hasVoted ? (
             <div className="space-y-3">
               {poll.options.map((option) => (
-                <div 
-                  key={option.id} 
+                <div
+                  key={option.id}
                   className={`p-3 border rounded-md cursor-pointer transition-colors ${selectedOption === option.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-slate-50'}`}
                   onClick={() => setSelectedOption(option.id)}
                 >
                   {option.text}
                 </div>
               ))}
-              <Button 
-                onClick={handleVote} 
-                disabled={!selectedOption || isSubmitting} 
+              <Button
+                onClick={handleVote}
+                disabled={!selectedOption || isSubmitting}
                 className="mt-4"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Vote'}
@@ -99,8 +161,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
                     <span>{getPercentage(option.votes)}% ({option.votes} votes)</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2.5">
-                    <div 
-                      className="bg-blue-600 h-2.5 rounded-full" 
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
                       style={{ width: `${getPercentage(option.votes)}%` }}
                     ></div>
                   </div>
@@ -113,8 +175,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
           )}
         </CardContent>
         <CardFooter className="text-sm text-slate-500 flex justify-between">
-          <span>Created by {poll.createdBy}</span>
-          <span>Created on {new Date(poll.createdAt).toLocaleDateString()}</span>
+          <span>Created by {poll.user_id}</span>
+          <span>Created on {new Date(poll.created_at).toLocaleDateString()}</span>
         </CardFooter>
       </Card>
 

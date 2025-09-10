@@ -1,78 +1,84 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabase';
-
-interface PollOption {
-  id: string;
-  poll_id: string;
-  text: string;
-  votes: number;
-}
-
-interface Poll {
-  id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  user_id: string;
-  options: PollOption[];
-}
+import { votePoll } from '@/lib/actions/poll-actions';
+import { Poll, PollOption } from '@/types';
+import { toast } from 'sonner';
 
 export default function PollDetailPage({ params }: { params: { id: string } }) {
   const [poll, setPoll] = useState<Poll | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const fetchPoll = async () => {
       try {
-        const { data: pollData, error: pollError } = await supabase
+        const { data, error } = await supabase
           .from('polls')
-          .select('*')
+          .select(`
+            *,
+            options:poll_options(*)
+          `)
           .eq('id', params.id)
           .single();
 
-        if (pollError) {
+        if (error) {
           setError('Poll not found');
-          setLoading(false);
-          return;
+        } else {
+          setPoll(data as Poll);
         }
-
-        const { data: optionsData, error: optionsError } = await supabase
-          .from('poll_options')
-          .select('*')
-          .eq('poll_id', params.id);
-
-        if (optionsError) {
-          setError('Failed to load poll options');
-          setLoading(false);
-          return;
-        }
-
-        const pollWithOptions = {
-          ...pollData,
-          options: optionsData || []
-        };
-
-        setPoll(pollWithOptions);
-        setLoading(false);
       } catch (err) {
         setError('Failed to load poll');
+      } finally {
         setLoading(false);
       }
     };
 
     fetchPoll();
   }, [params.id]);
+
+  const handleVote = async () => {
+    if (!selectedOption) {
+      setError('Please select an option before voting.');
+      return;
+    }
+
+    setError(null);
+
+    startTransition(async () => {
+      // Optimistic update
+      const originalPoll = poll;
+      const updatedOptions = poll!.options.map(option =>
+        option.id === selectedOption
+          ? { ...option, votes: option.votes + 1 }
+          : option
+      );
+      setPoll(prevPoll => ({ ...prevPoll!, options: updatedOptions }));
+      setHasVoted(true);
+
+      const result = await votePoll(params.id, selectedOption);
+
+      if (result?.error) {
+        setError(result.error);
+        toast.error('Failed to submit vote. Please try again.');
+        // Revert optimistic update
+        setPoll(originalPoll);
+        setHasVoted(false);
+      } else {
+        setShowThankYou(true);
+        setTimeout(() => setShowThankYou(false), 2000);
+      }
+    });
+  };
 
   if (loading) {
     return (
@@ -95,55 +101,6 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
   }
 
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
-
-  const handleVote = async () => {
-    if (!selectedOption) {
-      setError('Please select an option before voting.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      // Simulate API call with potential failure
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // Simulate random failure for demo
-          if (Math.random() > 0.9) {
-            reject(new Error('Network error'));
-          } else {
-            resolve(true);
-          }
-        }, 1500);
-      });
-
-      // Update mock data (in real app, this would be server-side)
-      const updatedOptions = poll.options.map(option =>
-        option.id === selectedOption
-          ? { ...option, votes: option.votes + 1 }
-          : option
-      );
-
-      setPoll(prevPoll => ({
-        ...prevPoll,
-        options: updatedOptions
-      }));
-
-      setHasVoted(true);
-      setShowThankYou(true);
-
-      // Hide thank you after 2 seconds and show results
-      setTimeout(() => {
-        setShowThankYou(false);
-      }, 2000);
-
-    } catch (err) {
-      setError('Failed to submit vote. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const getPercentage = (votes: number) => {
     if (totalVotes === 0) return 0;
@@ -202,11 +159,11 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
               </div>
               <Button
                 onClick={handleVote}
-                disabled={!selectedOption || isSubmitting}
+                disabled={!selectedOption || isPending}
                 className="mt-4 w-full"
                 size="lg"
               >
-                {isSubmitting ? 'Submitting Vote...' : 'Submit Vote'}
+                {isPending ? 'Submitting Vote...' : 'Submit Vote'}
               </Button>
             </div>
           ) : (
@@ -240,8 +197,8 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
 
       {hasVoted && !showThankYou && (
         <div className="text-center">
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            Vote Again (Demo)
+          <Button variant="outline" onClick={() => setHasVoted(false)}>
+            Vote Again
           </Button>
         </div>
       )}

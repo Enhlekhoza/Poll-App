@@ -1,31 +1,37 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Copy, Share2, Twitter, Facebook, Mail } from "lucide-react";
-import { toast } from "sonner";
+} from '@/components/ui/card';
+import { Copy, Share2, Twitter, Facebook, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface VulnerableShareProps {
+interface SharePollProps {
   pollId: string;
   pollTitle: string;
 }
 
-export default function VulnerableShare({
-  pollId,
-  pollTitle,
-}: VulnerableShareProps) {
-  const [shareUrl, setShareUrl] = useState("");
+// Basic HTML tag stripper for sanitization
+const stripHtml = (html: string) => {
+  if (typeof window === 'undefined') {
+    return html; // return original string on server
+  }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || '';
+};
+
+export default function SharePoll({ pollId, pollTitle }: SharePollProps) {
+  const [shareUrl, setShareUrl] = useState('');
+  const sanitizedTitle = stripHtml(pollTitle);
 
   useEffect(() => {
-    // Generate the share URL
     const baseUrl = window.location.origin;
     const pollUrl = `${baseUrl}/polls/${pollId}`;
     setShareUrl(pollUrl);
@@ -34,18 +40,18 @@ export default function VulnerableShare({
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success("Link copied to clipboard!");
+      toast.success('Link copied to clipboard!');
     } catch (err) {
-      toast.error("Failed to copy link");
+      toast.error('Failed to copy link');
     }
   };
 
   const shareOnTwitter = () => {
-    const text = encodeURIComponent(`Check out this poll: ${pollTitle}`);
+    const text = encodeURIComponent(`Check out this poll: ${sanitizedTitle}`);
     const url = encodeURIComponent(shareUrl);
     window.open(
       `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
-      "_blank",
+      '_blank',
     );
   };
 
@@ -53,12 +59,12 @@ export default function VulnerableShare({
     const url = encodeURIComponent(shareUrl);
     window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-      "_blank",
+      '_blank',
     );
   };
 
   const shareViaEmail = () => {
-    const subject = encodeURIComponent(`Poll: ${pollTitle}`);
+    const subject = encodeURIComponent(`Poll: ${sanitizedTitle}`);
     const body = encodeURIComponent(
       `Hi! I'd like to share this poll with you: ${shareUrl}`,
     );
@@ -77,7 +83,6 @@ export default function VulnerableShare({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* URL Display */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">
             Shareable Link
@@ -95,7 +100,6 @@ export default function VulnerableShare({
           </div>
         </div>
 
-        {/* Social Sharing Buttons */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">
             Share on social media

@@ -3,16 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getUserPolls } from '@/lib/actions/poll-actions';
-import { createClient } from '@/lib/supabase/server';
-import { BarChart3, Plus, Vote, TrendingUp, Users, Calendar } from 'lucide-react';
+import { BarChart3, Plus, Vote, TrendingUp, Users, Calendar, Share2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import SharePoll from './polls/SharePoll';
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  // Get user polls with options
   const { polls, error } = await getUserPolls();
 
-  // Calculate dashboard metrics
   const totalPolls = polls?.length || 0;
   const totalVotes = polls?.reduce((sum, poll) => {
     return sum + (poll.options?.reduce((optionSum, option) => optionSum + (option.votes || 0), 0) || 0);
@@ -22,7 +19,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
@@ -36,7 +32,6 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
-      {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -45,9 +40,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalPolls}</div>
-            <p className="text-xs text-muted-foreground">
-              Polls created
-            </p>
+            <p className="text-xs text-muted-foreground">Polls created</p>
           </CardContent>
         </Card>
 
@@ -58,9 +51,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalVotes}</div>
-            <p className="text-xs text-muted-foreground">
-              Votes received
-            </p>
+            <p className="text-xs text-muted-foreground">Votes received</p>
           </CardContent>
         </Card>
 
@@ -73,9 +64,7 @@ export default async function DashboardPage() {
             <div className="text-2xl font-bold">
               {polls?.filter(poll => (poll.options?.reduce((sum, option) => sum + (option.votes || 0), 0) || 0) > 0).length || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              With votes
-            </p>
+            <p className="text-xs text-muted-foreground">With votes</p>
           </CardContent>
         </Card>
 
@@ -88,26 +77,23 @@ export default async function DashboardPage() {
             <div className="text-2xl font-bold">
               {totalPolls > 0 ? Math.round((totalVotes / totalPolls) * 10) / 10 : 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Votes per poll
-            </p>
+            <p className="text-xs text-muted-foreground">Votes per poll</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Polls */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
             Recent Polls
           </CardTitle>
-          <CardDescription>
-            Your most recently created polls
-          </CardDescription>
+          <CardDescription>Your most recently created polls</CardDescription>
         </CardHeader>
         <CardContent>
-          {recentPolls.length > 0 ? (
+          {error && <div className="text-red-500">{error}</div>}
+          {!error && !polls && <div>Loading...</div>}
+          {!error && polls && polls.length > 0 ? (
             <div className="space-y-4">
               {recentPolls.map((poll) => {
                 const pollVotes = poll.options?.reduce((sum, option) => sum + (option.votes || 0), 0) || 0;
@@ -117,21 +103,28 @@ export default async function DashboardPage() {
                       <h3 className="font-medium">{poll.title}</h3>
                       <p className="text-sm text-muted-foreground line-clamp-1">{poll.description}</p>
                       <div className="flex items-center gap-4 mt-2">
-                        <Badge variant="secondary">
-                          {poll.options?.length || 0} options
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {pollVotes} votes
-                        </span>
+                        <Badge variant="secondary">{poll.options?.length || 0} options</Badge>
+                        <span className="text-sm text-muted-foreground">{pollVotes} votes</span>
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/dashboard/polls/${poll.id}`}>View</Link>
                       </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/polls/${poll.id}`}>Share</Link>
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Share Poll</DialogTitle>
+                          </DialogHeader>
+                          <SharePoll pollId={poll.id} pollTitle={poll.title} />
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
                 );
@@ -151,13 +144,10 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Common tasks to manage your polls
-          </CardDescription>
+          <CardDescription>Common tasks to manage your polls</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -182,8 +172,6 @@ export default async function DashboardPage() {
           </div>
         </CardContent>
       </Card>
-
-      {error && <div className="text-red-500">{error}</div>}
     </div>
   );
 }

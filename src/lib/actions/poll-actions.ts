@@ -16,8 +16,11 @@ export async function getUserPolls() {
 
     const { data: polls, error } = await supabase
       .from('polls')
-      .select('*')
-      .eq('created_by', user.id)
+      .select(`
+        *,
+        options:poll_options(*)
+      `)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -84,7 +87,7 @@ export async function deletePoll(pollId: string) {
       .from('polls')
       .delete()
       .eq('id', pollId)
-      .eq('created_by', user.id);
+      .eq('user_id', user.id);
 
     if (error) {
       return { success: false, error: error.message };
@@ -113,5 +116,22 @@ export async function getAllPolls() {
     return { polls: polls || [], error: null };
   } catch (error) {
     return { polls: [], error: 'Failed to fetch polls' };
+  }
+}
+
+export async function votePoll(pollId: string, optionId: string) {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase.rpc('increment_vote', { option_id: optionId });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath(`/polls/${pollId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: 'Failed to vote on poll' };
   }
 }

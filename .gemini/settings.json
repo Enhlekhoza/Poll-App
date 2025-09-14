@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "local-supabase": {
+      "command": "http://localhost:3000",
+      "args": []
+    }
+  }
+}

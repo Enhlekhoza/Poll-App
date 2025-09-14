@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "mcp-server": "cross-env SUPABASE_ACCESS_TOKEN=sbp_21826fbca726ef45f15e15a8b574ec23841f532c npx -y @supabase/mcp-server-supabase@latest --project-ref=shoqsnzdwceqnisssqqh --read-only"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -35,6 +36,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv-cli": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
     "shadcn": "^2.10.0",

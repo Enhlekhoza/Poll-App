@@ -19,11 +19,9 @@ import {
   BarChart3,
   Plus,
   Settings,
-  Users,
   Menu,
   LogOut,
   User,
-  Home,
   PieChart,
   TrendingUp,
   Bell,
@@ -31,11 +29,9 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Create Poll', href: '/dashboard/create', icon: Plus },
   { name: 'My Polls', href: '/dashboard/polls', icon: BarChart3 },
   { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
-  { name: 'Users', href: '/dashboard/users', icon: Users },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
@@ -68,7 +64,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <BarChart3 className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          <span className="sr-only">
             PollMaster
           </span>
         </div>

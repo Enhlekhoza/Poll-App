@@ -1,8 +1,15 @@
-import { getAllPolls } from '@/lib/actions/poll-actions';
+import { getUserPolls } from '@/lib/actions/poll-actions';
 import PollActions from '../PollActions';
+import { cookies } from 'next/headers';
 
 export default async function PollsPage() {
-  const { polls, error } = await getAllPolls();
+  // Fix for cookie usage: await cookies() before use
+  const cookieStore = await cookies();
+  const authCookie = cookieStore.get('sb-shoqsnzdwceqnisssqqh-auth-token');
+
+  // You can use authCookie?.value if needed for auth checks or logging
+
+  const { polls, error } = await getUserPolls();
 
   return (
     <div className="space-y-6">

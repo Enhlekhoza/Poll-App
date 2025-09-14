@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/supabase';
+import { votePoll } from '@/lib/actions/poll-actions';
+import { toast } from 'sonner';
 
 interface PollOption {
   id: string;
@@ -93,16 +95,35 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
 
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
 
-  const handleVote = () => {
-    if (!selectedOption) return;
+  const handleVote = async () => {
+    if (!selectedOption || !poll) return;
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setHasVoted(true);
+    try {
+      const result = await votePoll(poll.id, selectedOption);
+
+      if (result.success) {
+        toast.success('Vote submitted successfully!');
+        setHasVoted(true);
+
+        // Refresh poll data to show updated results
+        const { data: updatedOptions } = await supabase
+          .from('poll_options')
+          .select('*')
+          .eq('poll_id', poll.id);
+
+        if (updatedOptions) {
+          setPoll({ ...poll, options: updatedOptions });
+        }
+      } else {
+        toast.error(result.error || 'Failed to submit vote');
+      }
+    } catch (error) {
+      toast.error('Failed to submit vote');
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const getPercentage = (votes: number) => {

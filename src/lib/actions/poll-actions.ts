@@ -123,15 +123,65 @@ export async function votePoll(pollId: string, optionId: string) {
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase.rpc('increment_vote', { option_id: optionId });
+    // Check if user has already voted (if authenticated)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: existingVote } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('poll_id', pollId)
+        .eq('user_id', user.id)
+        .single();
 
-    if (error) {
-      return { success: false, error: error.message };
+      if (existingVote) {
+        return { success: false, error: 'User has already voted on this poll' };
+      }
+    }
+
+    // Increment vote count in poll_options table
+    const { error: incrementError } = await supabase.rpc('increment_vote', { option_id: optionId });
+
+    if (incrementError) {
+      return { success: false, error: incrementError.message };
+    }
+
+    // Insert vote record to votes table
+    const { error: voteError } = await supabase.from('votes').insert({
+      poll_id: pollId,
+      option_id: optionId,
+      user_id: user ? user.id : null,
+    });
+
+    if (voteError) {
+      return { success: false, error: voteError.message };
     }
 
     revalidatePath(`/polls/${pollId}`);
     return { success: true };
   } catch (error) {
     return { success: false, error: 'Failed to vote on poll' };
+  }
+}
+
+export async function getPollById(pollId: string) {
+  try {
+    const supabase = await createClient();
+
+    const { data: poll, error } = await supabase
+      .from('polls')
+      .select(`
+        *,
+        options:poll_options(*)
+      `)
+      .eq('id', pollId)
+      .single();
+
+    if (error) {
+      return { poll: null, error: error.message };
+    }
+
+    return { poll, error: null };
+  } catch (error) {
+    return { poll: null, error: 'Failed to fetch poll' };
   }
 }

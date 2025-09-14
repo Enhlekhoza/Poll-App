@@ -1,12 +1,13 @@
 import "./globals.css"
-import { Inter as NextInter } from "next/font/google"
+import { Poppins } from "next/font/google"
 import ClientProviders from "./ClientProviders"
 
-// Modified font configuration to avoid module resolution issues
-const inter = NextInter({
+// Configure Poppins font
+const poppins = Poppins({
   subsets: ["latin"],
+  weight: ["400", "700"],
   display: "swap",
-  variable: "--font-inter"
+  variable: "--font-poppins",
 })
 
 export const metadata = {
@@ -16,8 +17,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} ${inter.variable}`}>
+    <html lang="en" className={poppins.variable}>
+      <body className={poppins.className}>
         <ClientProviders>
           {children}
         </ClientProviders>

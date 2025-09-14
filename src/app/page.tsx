@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, BarChart3, CheckCircle, ArrowRight, Sparkles, Zap, Users } from 'lucide-react'
@@ -13,9 +14,9 @@ export default function HomePage() {
             <Sparkles size={16} />
             Create Amazing Polls Instantly
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-            Engage Your Audience
-          </h1>
+          <h1 className="inline-block text-5xl md:text-6xl font-bold mb-6 leading-snug bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+          Engage Your Audience
+        </h1>
           <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
             Create interactive polls, gather opinions, and see real-time results. Perfect for events, surveys, and community engagement.
           </p>

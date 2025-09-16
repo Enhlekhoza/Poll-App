@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 import { revalidatePath } from 'next/cache';
 
@@ -47,27 +47,44 @@ export async function createPoll(formData: FormData) {
     const description = formData.get('description') as string;
     const options = formData.getAll('options') as string[];
 
-    if (!title || !options || options.length < 2) {
-      return { success: false, error: 'Title and at least 2 options are required' };
+    if (!title || !options || options.length < 4) {
+      return { success: false, error: 'Title and at least 4 options are required' };
     }
 
-    const { data: poll, error } = await supabase
+    // Step 1: Insert the poll into the 'polls' table and get its ID
+    const { data: pollData, error: pollError } = await supabase
       .from('polls')
       .insert({
         title,
         description,
-        options,
-        created_by: user.id,
+        user_id: user.id,
       })
-      .select()
+      .select('id')
       .single();
 
-    if (error) {
-      return { success: false, error: error.message };
+    if (pollError) {
+      return { success: false, error: pollError.message };
+    }
+    if (!pollData) {
+      return { success: false, error: 'Failed to create poll and retrieve its ID.' };
+    }
+
+    // Step 2: Prepare and insert the poll options
+    const optionsToInsert = options.map((option) => ({
+      text: option,
+      poll_id: pollData.id,
+    }));
+
+    const { error: optionsError } = await supabase.from('poll_options').insert(optionsToInsert);
+
+    if (optionsError) {
+      // If options fail to insert, delete the poll to avoid orphaned data.
+      await supabase.from('polls').delete().match({ id: pollData.id });
+      return { success: false, error: optionsError.message };
     }
 
     revalidatePath('/dashboard');
-    return { success: true, poll };
+    return { success: true, poll: pollData };
   } catch (error) {
     return { success: false, error: 'Failed to create poll' };
   }

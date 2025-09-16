@@ -17,3 +17,11 @@
 - [x] Test voting and results
 - [x] Verify auth protection
 - [x] Final UI/UX review
+
+## In Progress
+- [x] Fix poll creation error by using server actions
+  - [x] Update create poll page to use createPoll server action
+  - [x] Remove inline Supabase operations from client component
+  - [x] Add proper error handling and user feedback
+  - [x] Update validation to require at least 4 options
+  - [ ] Test the updated poll creation flow

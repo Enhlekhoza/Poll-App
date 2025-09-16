@@ -10,10 +10,11 @@ const poppins = Poppins({
   variable: "--font-poppins",
 })
 
-export const metadata = {
-  title: "Poll App",
-  description: "Create and manage polls",
+export const metadata: Metadata = {
+  title: "PollMaster",
+  description: "Create and share polls with ease.",
 }
+
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

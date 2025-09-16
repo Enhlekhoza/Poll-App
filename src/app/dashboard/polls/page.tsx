@@ -1,5 +1,5 @@
 import { getUserPolls } from '@/lib/actions/poll-actions';
-import PollActions from '../PollActions';
+import PollActions from '@/components/polls/PollActions';
 import { cookies } from 'next/headers';
 
 export default async function PollsPage() {

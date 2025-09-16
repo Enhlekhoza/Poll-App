@@ -12,6 +12,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
+  forgotPassword: (email: string) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null }),
   signOut: async () => {},
+  forgotPassword: async () => ({ error: null }),
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -56,12 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading && user) {
       const loginPath = "/auth/login"
+      const updatePasswordPath = "/auth/update-password"
       if (pathname?.replace(/\/$/, "") === loginPath) {
         const redirectTo = searchParams?.get("redirect") || "/"
         console.log("AuthProvider: redirecting to", redirectTo)
 
         // Use replace instead of push to avoid browser history issues
         setTimeout(() => router.replace(redirectTo), 100)
+      } else if (pathname?.startsWith(updatePasswordPath)) {
+        // Do not redirect if on the update password page, let it handle the session
+        return
       }
     }
   }, [user, loading, pathname, searchParams, router])
@@ -89,8 +95,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace("/auth/login")
   }
 
+  const forgotPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      })
+      return { error: error }
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Unknown error during password reset') }
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, forgotPassword }}>
       {children}
     </AuthContext.Provider>
   )

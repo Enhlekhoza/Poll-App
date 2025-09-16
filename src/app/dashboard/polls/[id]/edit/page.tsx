@@ -1,19 +1,66 @@
-import { getPollById } from '@/app/lib/actions/poll-actions';
-import { notFound } from 'next/navigation';
-// Import the client component
-import EditPollForm from './EditPollForm';
+"use client"
 
-export default async function EditPollPage({ params }: { params: { id: string } }) {
-  const { poll, error } = await getPollById(params.id);
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
+import { getPollById } from "@/lib/actions/poll-actions"
+import { Poll } from "@/types"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { EditPollForm } from "@/components/polls/EditPollForm"
 
-  if (error || !poll) {
-    notFound();
+export default function EditPollPage() {
+  const { id } = useParams()
+  const pollId = Array.isArray(id) ? id[0] : id
+  const [poll, setPoll] = useState<Poll | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPoll = async () => {
+      setLoading(true)
+      const { poll, error } = await getPollById(pollId)
+      if (error) {
+        toast.error(error)
+        setPoll(null)
+      } else {
+        setPoll(poll)
+      }
+      setLoading(false)
+    }
+    if (pollId) {
+      fetchPoll()
+    }
+  }, [pollId])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (!poll) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Poll not found.</p>
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-md mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Edit Poll</h1>
-      <EditPollForm poll={poll} />
+    <div className="container mx-auto py-8">
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold">Edit Poll</CardTitle>
+          <CardDescription className="text-lg text-gray-600">
+            Modify your poll details and options.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EditPollForm poll={poll} />
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }

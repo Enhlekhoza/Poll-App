@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function updateSession(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -27,18 +27,16 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  // Define paths that should be accessible without authentication
+  const publicPaths = ['/', '/auth/login', '/auth/register', '/auth/forgot-password', '/auth/update-password'];
+  const isPublicPath = publicPaths.includes(request.nextUrl.pathname);
+
+  // If there's no user and it's not a public path, redirect to login
+  if (!user && !isPublicPath) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 

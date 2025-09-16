@@ -11,9 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { X, Plus, Vote, FileText, ListChecks } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
-import { supabase } from "@/lib/supabase/supabase"
 import ProtectedRoute from "@/components/ProtectedRoute"
+import { createPoll } from "@/lib/actions/poll-actions"
 
 // Define the schema for the form, ensuring at least two options are provided.
 const pollFormSchema = z.object({
@@ -32,7 +31,6 @@ type PollFormValues = z.infer<typeof pollFormSchema>
 
 export default function CreatePollPage() {
   const router = useRouter()
-  const { user } = useAuth()
 
   const form = useForm<PollFormValues>({
     resolver: zodResolver(pollFormSchema),
@@ -50,50 +48,21 @@ export default function CreatePollPage() {
   })
 
   const onSubmit = async (data: PollFormValues) => {
-    if (!user) {
-      toast.error("You must be logged in to create a poll.")
-      return
+    const formData = new FormData()
+    formData.append("title", data.title)
+    if (data.description) {
+      formData.append("description", data.description)
     }
+    data.options.forEach(option => formData.append("options", option.value))
 
-    try {
-      // Step 1: Insert the poll into the 'polls' table and get its ID
-      const { data: pollData, error: pollError } = await supabase
-        .from("polls")
-        .insert({
-          title: data.title,
-          description: data.description,
-          user_id: user.id,
-        })
-        .select("id")
-        .single()
+    const result = await createPoll(formData)
 
-      if (pollError) throw pollError
-      if (!pollData) throw new Error("Failed to create poll and retrieve its ID.")
-
-      // Step 2: Prepare and insert the poll options
-      const optionsToInsert = data.options.map((option) => ({
-        text: option.value,
-        poll_id: pollData.id,
-      }))
-
-      const { error: optionsError } = await supabase.from("poll_options").insert(optionsToInsert)
-
-      if (optionsError) {
-        // If options fail to insert, delete the poll to avoid orphaned data.
-        await supabase.from("polls").delete().match({ id: pollData.id })
-        throw optionsError
-      }
-
+    if (!result.success) {
+      toast.error(result.error)
+    } else {
       toast.success("Poll created successfully!")
       form.reset() // Reset the form to default values
-      router.push("/dashboard/polls") // Redirect to the polls list page
-    } catch (error) {
-      console.error("Error creating poll:", error)
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error("An error occurred while creating the poll")
-      }
+      router.push(`/dashboard/polls/${result.poll.id}`) // Redirect to the newly created poll
     }
   }
 

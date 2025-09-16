@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [hasRedirected, setHasRedirected] = useState(false)
 
   const router = useRouter()
   const pathname = usePathname()
@@ -37,25 +36,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load session and subscribe to changes
   useEffect(() => {
-    const loadSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-      setUser(data.session?.user ?? null)
-      setLoading(false)
+    if (typeof window !== 'undefined') { // Ensure this runs only in the browser
+      const loadSession = async () => {
+        console.log("AuthContext: Loading session...");
+        console.log("AuthContext: Calling getSession...");
+        const { data, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error("AuthContext: Error getting session:", error);
+        }
+        console.log("AuthContext: getSession returned. Data:", data);
+        setSession(data.session)
+        setUser(data.session?.user ?? null)
+        setLoading(false)
+        console.log("AuthContext: Session loaded. User:", data.session?.user, "Loading:", false);
+      }
+      loadSession()
+
+      const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+        console.log("AuthContext: Auth state changed. Event:", _event, "Session:", session);
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
+      })
+
+      // Note: Subscription cleanup is handled by Supabase internally
     }
-    loadSession()
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    // Note: Subscription cleanup is handled by Supabase internally
   }, [])
 
   // Redirect logged-in users away from login page and handle post-login navigation
+  
   useEffect(() => {
+    console.log("AuthContext: Redirect Effect. User:", user, "Loading:", loading, "Pathname:", pathname);
     if (!loading && user) {
       const loginPath = "/auth/login"
       const updatePasswordPath = "/auth/update-password"
@@ -71,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [user, loading, pathname, searchParams, router])
+  
 
   const signIn = async (email: string, password: string) => {
     try {

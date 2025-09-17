@@ -12,6 +12,7 @@ export function PollForm() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [options, setOptions] = useState<string[]>(["", ""])
+  const [dueDate, setDueDate] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -36,6 +37,9 @@ export function PollForm() {
       formData.append("description", description)
     }
     options.forEach(option => formData.append("options", option))
+    if (dueDate) {
+      formData.append("due_date", new Date(dueDate).toISOString())
+    }
 
     const result = await createPoll(formData)
     setLoading(false)
@@ -48,6 +52,7 @@ export function PollForm() {
       setTitle("")
       setDescription("")
       setOptions(["", ""])
+      setDueDate("")
       router.push(`/dashboard/polls/${result.poll.id}`)
     }
   }
@@ -101,6 +106,17 @@ export function PollForm() {
         <Button type="button" onClick={addOption} disabled={loading}>
           Add Option
         </Button>
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="dueDate">Due Date (Optional)</Label>
+        <Input
+          id="dueDate"
+          type="datetime-local"
+          value={dueDate}
+          onChange={e => setDueDate(e.target.value)}
+          disabled={loading}
+        />
       </div>
 
       <Button type="submit" disabled={loading} className="w-full">

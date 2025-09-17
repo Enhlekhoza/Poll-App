@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { Poll } from '@/types'
+import { Poll } from '@prisma/client' // Use Prisma's Poll type
 import { QRCodeSVG } from 'qrcode.react'
 import { Input } from '@/components/ui/input'
 import { Copy } from 'lucide-react'
+import { getPollById } from '@/lib/actions/poll-actions' // Import the action
 
 export default function SharePollPage() {
   const { id } = useParams() as { id: string }
@@ -19,23 +19,17 @@ export default function SharePollPage() {
   const [pollUrl, setPollUrl] = useState('')
 
   useEffect(() => {
-    const fetchPoll = async () => {
+    const fetchPollData = async () => {
       setLoading(true)
-      
-      // Fetch poll
-      const { data, error } = await supabase
-        .from('polls')
-        .select('*')
-        .eq('id', id)
-        .single()
+      const { poll: fetchedPoll, error } = await getPollById(id) // Use the server action
       
       if (error) {
-        toast.error('Failed to load poll')
+        toast.error('Failed to load poll: ' + error)
         setLoading(false)
         return
       }
       
-      setPoll(data)
+      setPoll(fetchedPoll)
       setLoading(false)
       
       // Create the poll URL
@@ -43,7 +37,7 @@ export default function SharePollPage() {
       setPollUrl(`${baseUrl}/polls/${id}`)
     }
     
-    fetchPoll()
+    fetchPollData()
   }, [id])
   
   const copyToClipboard = async () => {
@@ -62,7 +56,7 @@ export default function SharePollPage() {
     const svgData = new XMLSerializer().serializeToString(svg)
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-    const img = new Image()
+    const img = new Image();
     
     img.onload = () => {
       canvas.width = img.width

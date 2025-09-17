@@ -8,7 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 
-import { supabase } from "@/lib/supabase/supabase"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -51,16 +50,17 @@ export default function UpdatePasswordPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
-    const { data, error } = await supabase.auth.updateUser({
-      password: values.password,
-    })
+    // TODO: Re-implement password update using NextAuth.js
+    // NextAuth.js does not provide a direct client-side function to update user password.
+    // This typically involves a server-side API route that handles password updates.
+    // For now, we'll simulate success or show an error.
+    const error = "Password update is not yet implemented with NextAuth.js."
     setIsLoading(false)
 
     if (error) {
-      toast.error(error.message)
+      toast.error(error)
     } else {
       setUpdateSuccess(true)
-      // No redirect here, stay on the page to show confirmation message
     }
   }
 

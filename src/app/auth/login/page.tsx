@@ -34,7 +34,7 @@ const formSchema = z.object({
 })
 
 export default function LoginPage() {
-  const { signIn, loading } = useAuth() // Destructure loading from useAuth
+  const { signIn } = useAuth()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -52,19 +52,10 @@ export default function LoginPage() {
     setIsLoading(false)
 
     if (error) {
-      toast.error(error.message)
+      toast.error(error)
     } else {
-      toast.success("Logged in successfully!")
-      router.push("/dashboard") // Redirect to dashboard after successful login
+      router.push("/dashboard")
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
   }
 
   return (
@@ -73,7 +64,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">Login</CardTitle>
           <CardDescription>
-            Enter your email and password to access your account.
+            Enter your credentials to access your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -126,17 +117,14 @@ export default function LoginPage() {
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">
-            <Link
-              href="/auth/forgot-password"
-              className="text-primary hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <div className="mt-2 text-center text-sm">
             Don't have an account?{" "}
             <Link href="/auth/register" className="text-primary hover:underline">
               Sign up
+            </Link>
+          </div>
+          <div className="mt-2 text-center text-sm">
+            <Link href="/auth/forgot-password" className="text-primary hover:underline">
+              Forgot password?
             </Link>
           </div>
         </CardContent>

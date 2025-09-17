@@ -27,6 +27,11 @@ export function Header() {
               <Link href="/polls/create" className="text-sm font-medium hover:text-primary transition-colors">
                 Create Poll
               </Link>
+              {user.role === 'admin' && (
+                <Link href="/dashboard/admin" className="text-sm font-medium hover:text-primary transition-colors">
+                  Admin
+                </Link>
+              )}
               <Button 
                 variant="outline" 
                 size="sm"

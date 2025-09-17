@@ -6,11 +6,13 @@ import { Poll } from "@/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { PollResultsChart } from "@/components/polls/poll-results-chart"
+import { PollResultsChart } from "@/components/polls/PollResultsChart"
 import { useAuth } from "@/contexts/AuthContext"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { SharePoll } from "./SharePoll"
+import { CommentForm } from "./CommentForm"
+import { CommentList } from "./CommentList"
 
 interface PollDetailsDisplayProps {
   pollId: string
@@ -22,6 +24,7 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
   const [loading, setLoading] = useState(true)
   const [voting, setVoting] = useState(false)
   const [userVoted, setUserVoted] = useState(false)
+  const [refreshComments, setRefreshComments] = useState(false)
   const { user } = useAuth()
 
   const fetchPoll = async () => {
@@ -70,6 +73,10 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
       fetchPoll(); 
     }
     setVoting(false);
+  };
+
+  const handleCommentAdded = () => {
+    setRefreshComments(!refreshComments);
   };
 
   if (loading) {
@@ -123,7 +130,7 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
             {totalVotes === 0 ? (
               <p>No votes yet. Be the first to vote!</p>
             ) : (
-              <PollResultsChart options={poll.options} />
+              <PollResultsChart data={poll.options.map(option => ({ name: option.text, votes: option.votes }))} />
             )}
             <p className="text-sm text-gray-500">Total Votes: {totalVotes}</p>
           </div>
@@ -146,6 +153,12 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
           </div>
         </CardFooter>
       </Card>
+
+      <div className="max-w-2xl mx-auto mt-8">
+        <h3 className="text-xl font-semibold mb-4">Comments</h3>
+        <CommentForm pollId={poll.id} onCommentAdded={handleCommentAdded} />
+        <CommentList pollId={poll.id} refreshComments={refreshComments} />
+      </div>
     </div>
   )
 }

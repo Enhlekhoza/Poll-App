@@ -10,11 +10,13 @@ interface Poll {
   id: string;
   question: string;
   options: string[];
+  due_date?: string;
 }
 
 export default function EditPollForm({ poll }: { poll: Poll }) {
   const [question, setQuestion] = useState(poll.question);
   const [options, setOptions] = useState<string[]>(poll.options || []);
+  const [dueDate, setDueDate] = useState<string>(poll.due_date ? new Date(poll.due_date).toISOString().substring(0, 16) : "");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -37,6 +39,9 @@ export default function EditPollForm({ poll }: { poll: Poll }) {
         formData.set('question', question);
         formData.delete('options');
         options.forEach((opt) => formData.append('options', opt));
+        if (dueDate) {
+          formData.append("due_date", new Date(dueDate).toISOString());
+        }
         const res = await updatePoll(poll.id, formData);
         if (res?.error) {
           setError(res.error);
@@ -79,6 +84,15 @@ export default function EditPollForm({ poll }: { poll: Poll }) {
         <Button type="button" onClick={addOption} variant="secondary">
           Add Option
         </Button>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="dueDate">Due Date (Optional)</Label>
+        <Input
+          id="dueDate"
+          type="datetime-local"
+          value={dueDate}
+          onChange={e => setDueDate(e.target.value)}
+        />
       </div>
       {error && <div className="text-red-500">{error}</div>}
       {success && <div className="text-green-600">Poll updated! Redirecting...</div>}

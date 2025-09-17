@@ -31,10 +31,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 const formSchema = z.object({
   email: z.string().email({ message: "Enter a valid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match.",
-  path: ["confirmPassword"],
 })
 
 export default function RegisterPage() {
@@ -48,7 +44,6 @@ export default function RegisterPage() {
     defaultValues: {
       email: "",
       password: "",
-      confirmPassword: "",
     },
   })
 
@@ -58,7 +53,7 @@ export default function RegisterPage() {
     setIsLoading(false)
 
     if (error) {
-      toast.error(error.message)
+      toast.error(error)
     } else {
       setRegistrationSuccess(true)
       // No redirect here, stay on the page to show confirmation message
@@ -72,13 +67,10 @@ export default function RegisterPage() {
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">Registration Successful!</CardTitle>
             <CardDescription>
-              Please check your email inbox (and spam folder) to confirm your account.
+              You can now log in with your new account.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-sm text-gray-600 mb-4">
-              You need to confirm your email address before you can log in.
-            </p>
             <Link href="/auth/login">
               <Button className="w-full">Go to Login</Button>
             </Link>
@@ -130,25 +122,6 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input
                         id="password"
-                        placeholder="••••••••"
-                        type="password"
-                        autoComplete="new-password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        id="confirmPassword"
                         placeholder="••••••••"
                         type="password"
                         autoComplete="new-password"

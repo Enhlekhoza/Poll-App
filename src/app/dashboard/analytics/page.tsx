@@ -14,15 +14,15 @@ interface Poll {
   id: string;
   title: string;
   description: string | null;
-  created_at: string;
-  user_id: string;
+  createdAt: string;
+  authorId: string;
   options: PollOption[];
 }
 
 export default async function AnalyticsPage() {
   // Fetch polls with their options from Prisma
   const pollsData = await prisma.poll.findMany({
-    orderBy: { created_at: 'desc' },
+    orderBy: { createdAt: 'desc' },
     include: { options: true }, // Include options for each poll
   });
 
@@ -31,13 +31,13 @@ export default async function AnalyticsPage() {
     id: poll.id,
     title: poll.title,
     description: poll.description,
-    created_at: poll.created_at.toISOString(),
-    user_id: poll.user_id,
+    createdAt: poll.createdAt.toISOString(),
+    authorId: poll.authorId,
     options: poll.options.map(option => ({
       id: option.id,
-      poll_id: option.poll_id,
+      poll_id: option.pollId, // fix field name
       text: option.text,
-      votes: option.votes,
+      votes: 0, // default votes as Prisma doesn't have this field
     })),
   }));
 
@@ -126,7 +126,7 @@ export default async function AnalyticsPage() {
                       <div className="flex items-center gap-4 mt-2">
                         <Badge variant="secondary">{poll.options.length} options</Badge>
                         <span className="text-sm text-muted-foreground">
-                          Created {new Date(poll.created_at).toLocaleDateString()}
+                          Created {new Date(poll.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>

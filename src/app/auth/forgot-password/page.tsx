@@ -39,21 +39,26 @@ export default function ForgotPasswordPage() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-    },
+    defaultValues: { email: "" },
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
-    const { error } = await forgotPassword(values.email)
-    setIsLoading(false)
+    try {
+      const { error } = await forgotPassword(values.email)
 
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success("Password reset email sent! Please check your inbox.")
-      router.push("/auth/login")
+      if (error) {
+        // Cast error safely to unknown and handle it
+        const err = error as unknown
+        toast.error(err instanceof Error ? err.message : String(err))
+      } else {
+        toast.success("Password reset email sent! Please check your inbox.")
+        router.push("/auth/login")
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsLoading(false)
     }
   }
 

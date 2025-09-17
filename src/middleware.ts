@@ -1,21 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from './lib/auth';
+import { NextRequest, NextResponse } from "next/server"
 
 export const config = {
-  runtime: 'nodejs', // This forces the middleware to run in a Node.js environment
-};
+  matcher: ["/((?!auth|_next/static|_next/image|favicon.ico).*)"], 
+  // Protect everything except /auth/* and public assets
+}
 
-export async function middleware(request: NextRequest) {
-  const session = await auth();
+export function middleware(req: NextRequest) {
+  const publicPaths = [
+    "/", 
+    "/auth/login", 
+    "/auth/register", 
+    "/auth/forgot-password", 
+    "/auth/update-password"
+  ]
 
-  const publicPaths = ['/', '/auth/login', '/auth/register', '/auth/forgot-password', '/auth/update-password'];
-  const isPublicPath = publicPaths.includes(request.nextUrl.pathname);
+  const isPublicPath = publicPaths.includes(req.nextUrl.pathname)
 
-  if (!session && !isPublicPath) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    return NextResponse.redirect(url);
+  // Look for next-auth cookies (works for dev & prod)
+  const token = req.cookies.get("next-auth.session-token")?.value 
+             || req.cookies.get("__Secure-next-auth.session-token")?.value
+
+  if (!token && !isPublicPath) {
+    const url = req.nextUrl.clone()
+    url.pathname = "/auth/login"
+    return NextResponse.redirect(url)
   }
 
-  return NextResponse.next();
+  return NextResponse.next()
 }

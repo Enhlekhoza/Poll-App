@@ -12,12 +12,6 @@ export function LandingHeader() {
           <span className="font-bold text-lg">PollMaster</span>
         </Link>
         <nav className="flex items-center space-x-4">
-          <Button asChild variant="ghost">
-            <Link href="/auth/login">Login</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/auth/register">Sign Up</Link>
-          </Button>
         </nav>
       </div>
     </header>

@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-
+import Image from 'next/image'; // Import Image for the background
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -15,29 +15,36 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     }
   }, [user, loading, router]);
 
-  if (loading) {
-    return <div>Loading...</div>; // Or a loading spinner
-  }
-
   if (user) {
     return null; // Should already be redirected by useEffect
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="py-4 px-6 border-b bg-white">
-        <div className="container mx-auto flex justify-center">
-          <h1 className="text-2xl font-bold text-slate-800">ALX Polly</h1>
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      {/* Left side: Visual background */}
+      <div className="relative hidden lg:flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 p-8">
+        <div className="absolute inset-0 z-0 opacity-20">
+          {/* Placeholder for a more complex background or illustration */}
+          <Image
+            src="/globe.svg" // Using an existing SVG as a placeholder
+            alt="Background Illustration"
+            layout="fill"
+            objectFit="cover"
+            className="opacity-50"
+          />
         </div>
-      </header>
-      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="relative z-10 text-center text-white">
+          <h2 className="text-4xl font-bold mb-4">Welcome to Poll Master</h2>
+          <p className="text-lg opacity-80">
+            Create engaging polls and gather insights from your audience.
+          </p>
+        </div>
+      </div>
+
+      {/* Right side: Auth form */}
+      <main className="flex items-center justify-center bg-white p-8 lg:p-12">
         {children}
       </main>
-      <footer className="py-4 px-6 border-t bg-white">
-        <div className="container mx-auto text-center text-sm text-slate-500">
-          &copy; {new Date().getFullYear()} ALX Polly. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 }

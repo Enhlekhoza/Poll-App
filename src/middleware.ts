@@ -1,30 +1,21 @@
-import { NextRequest, NextResponse } from "next/server"
+// /middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export const config = {
-  matcher: ["/((?!auth|_next/static|_next/image|favicon.ico).*)"], 
-  // Protect everything except /auth/* and public assets
-}
+  matcher: ["/dashboard/:path*"], // ✅ Protect only dashboard pages
+};
 
 export function middleware(req: NextRequest) {
-  const publicPaths = [
-    "/", 
-    "/auth/login", 
-    "/auth/register", 
-    "/auth/forgot-password", 
-    "/auth/update-password"
-  ]
+  const token =
+    req.cookies.get("next-auth.session-token")?.value || // Local development
+    req.cookies.get("__Secure-next-auth.session-token")?.value; // Production / HTTPS
 
-  const isPublicPath = publicPaths.includes(req.nextUrl.pathname)
-
-  // Look for next-auth cookies (works for dev & prod)
-  const token = req.cookies.get("next-auth.session-token")?.value 
-             || req.cookies.get("__Secure-next-auth.session-token")?.value
-
-  if (!token && !isPublicPath) {
-    const url = req.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
+  if (!token) {
+    const loginUrl = new URL("/auth/login", req.url);
+    loginUrl.searchParams.set("redirect", req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next()
+  return NextResponse.next();
 }

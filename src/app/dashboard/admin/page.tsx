@@ -43,7 +43,7 @@ export default async function AdminPage() {
               <TableRow key={user.id}>
                 <TableCell>{user.id}</TableCell>
                 <TableCell>{user.email}</TableCell>
-                <TableCell>{new Date(user.created_at).toLocaleString()}</TableCell>
+                <TableCell>{new Date(user.createdAt).toLocaleString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>

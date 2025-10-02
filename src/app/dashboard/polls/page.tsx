@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { getUserPolls } from "@/lib/actions/poll-actions"
-import { Poll } from "@/types"
+import { Poll } from "@/types/index"
 import { PollCard } from "@/components/polls/poll-card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { toast } from "sonner"
@@ -26,7 +26,7 @@ export default function DashboardPollsPage() {
       toast.error(error)
     } else {
       setPolls((prevPolls) => [...prevPolls, ...newPolls])
-      setHasMore(newHasMore)
+      setHasMore(newHasMore || false)
       setOffset((prevOffset) => prevOffset + newPolls.length)
     }
     setLoadingMore(false)
@@ -44,7 +44,7 @@ export default function DashboardPollsPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <LoadingSpinner />
       </div>
     )
   }

@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { getComments } from "@/lib/actions/poll-actions";
-import { Comment } from "@/types";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+
+interface Comment {
+    id: string;
+    text: string;
+    author: {
+        email: string;
+    };
+}
 
 interface CommentListProps {
   pollId: string;
@@ -21,7 +28,7 @@ export function CommentList({ pollId, refreshComments }: CommentListProps) {
     if (error) {
       // Handle error
     } else {
-      setComments(comments);
+      setComments(comments as Comment[]);
     }
     setLoading(false);
   };

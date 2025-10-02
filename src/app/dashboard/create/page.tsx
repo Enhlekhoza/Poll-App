@@ -62,7 +62,9 @@ export default function CreatePollPage() {
     } else {
       toast.success("Poll created successfully!")
       form.reset() // Reset the form to default values
-      router.push(`/dashboard/polls/${result.poll.id}`) // Redirect to the newly created poll
+      if (result.poll) {
+        router.push(`/dashboard/polls/${result.poll.id}`) // Redirect to the newly created poll
+      }
     }
   }
 

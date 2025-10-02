@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { getPollById } from "@/lib/actions/poll-actions"
-import { Poll } from "@/types"
+import { Poll } from "@/types/index"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -18,6 +18,11 @@ export default function EditPollPage() {
   useEffect(() => {
     const fetchPoll = async () => {
       setLoading(true)
+      if (!pollId) {
+        toast.error("Poll ID is missing.")
+        setLoading(false)
+        return;
+      }
       const { poll, error } = await getPollById(pollId)
       if (error) {
         toast.error(error)
@@ -35,7 +40,7 @@ export default function EditPollPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <LoadingSpinner />
       </div>
     )
   }

@@ -6,11 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { Poll } from '@prisma/client' // Use Prisma's Poll type
 import { QRCodeSVG } from 'qrcode.react'
 import { Input } from '@/components/ui/input'
 import { Copy } from 'lucide-react'
 import { getPollById } from '@/lib/actions/poll-actions' // Import the action
+
+interface Poll {
+  id: string;
+  title: string;
+  description: string | null;
+}
 
 export default function SharePollPage() {
   const { id } = useParams() as { id: string }
@@ -23,8 +28,8 @@ export default function SharePollPage() {
       setLoading(true)
       const { poll: fetchedPoll, error } = await getPollById(id) // Use the server action
       
-      if (error) {
-        toast.error('Failed to load poll: ' + error)
+      if (error || !fetchedPoll) {
+        toast.error('Failed to load poll: ' + (error || 'Poll not found'))
         setLoading(false)
         return
       }

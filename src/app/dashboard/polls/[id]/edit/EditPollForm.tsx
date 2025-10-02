@@ -1,102 +1,127 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { updatePoll } from '@/lib/actions/poll-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { Poll } from '@/types/index';
+import { useRouter } from 'next/navigation';
+import { Textarea } from '@/components/ui/textarea';
+import { X, Plus } from 'lucide-react';
 
-interface Poll {
-  id: string;
-  question: string;
-  options: string[];
-  due_date?: string;
+interface EditPollFormProps {
+  poll: Poll;
 }
 
-export default function EditPollForm({ poll }: { poll: Poll }) {
-  const [question, setQuestion] = useState(poll.question);
-  const [options, setOptions] = useState<string[]>(poll.options || []);
-  const [dueDate, setDueDate] = useState<string>(poll.due_date ? new Date(poll.due_date).toISOString().substring(0, 16) : "");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+export function EditPollForm({ poll }: EditPollFormProps) {
+  const [title, setTitle] = useState(poll.title);
+  const [description, setDescription] = useState(poll.description || '');
+  const [options, setOptions] = useState<Array<{ id?: string; text: string }>>(
+    poll.options.map((opt) => ({ id: opt.id, text: opt.text }))
+  );
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleOptionChange = (idx: number, value: string) => {
-    setOptions((opts) => opts.map((opt, i) => (i === idx ? value : opt)));
+  const addOption = () => setOptions([...options, { text: '' }]);
+  const removeOption = (index: number) => {
+    // Don't allow removing if only 2 options remain
+    if (options.length <= 2) return;
+    setOptions(options.filter((_, i) => i !== index));
+  };
+  const updateOption = (index: number, value: string) => {
+    const newOptions = [...options];
+    newOptions[index].text = value;
+    setOptions(newOptions);
   };
 
-  const addOption = () => setOptions((opts) => [...opts, '']);
-  const removeOption = (idx: number) => {
-    if (options.length > 2) {
-      setOptions((opts) => opts.filter((_, i) => i !== idx));
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return toast.error('Poll title is required');
+    if (options.length < 2) return toast.error('Add at least 2 options');
+    if (options.some((opt) => !opt.text.trim()))
+      return toast.error('All options must have text');
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('title', title);
+    if (description) {
+      formData.append('description', description);
+    }
+    options.forEach((option) => {
+      formData.append('options', option.text);
+      if (option.id) {
+        formData.append('optionIds', option.id);
+      }
+    });
+
+    const result = await updatePoll(poll.id, formData);
+    setLoading(false);
+
+    if (!result.success) {
+      toast.error(result.error instanceof Error ? result.error.message : String(result.error));
+    } else {
+      toast.success('Poll updated successfully!');
+      router.push(`/dashboard/polls/${poll.id}`);
     }
   };
 
   return (
-    <form
-      action={async (formData) => {
-        setError(null);
-        setSuccess(false);
-        formData.set('question', question);
-        formData.delete('options');
-        options.forEach((opt) => formData.append('options', opt));
-        if (dueDate) {
-          formData.append("due_date", new Date(dueDate).toISOString());
-        }
-        const res = await updatePoll(poll.id, formData);
-        if (res?.error) {
-          setError(res.error);
-        } else {
-          setSuccess(true);
-          setTimeout(() => {
-            window.location.href = '/polls';
-          }, 1200);
-        }
-      }}
-      className="space-y-6"
-    >
-      <div>
-        <Label htmlFor="question">Poll Question</Label>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1">
+        <Label htmlFor="title">Poll Title</Label>
         <Input
-          name="question"
-          id="question"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          required
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter poll question"
+          disabled={loading}
         />
       </div>
-      <div>
+
+      <div className="space-y-1">
+        <Label htmlFor="description">Description (Optional)</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Optional description"
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-2">
         <Label>Options</Label>
-        {options.map((opt, idx) => (
-          <div key={idx} className="flex items-center gap-2 mb-2">
+        {options.map((opt, index) => (
+          <div key={opt.id || index} className="flex items-center space-x-2">
             <Input
-              name="options"
-              value={opt}
-              onChange={(e) => handleOptionChange(idx, e.target.value)}
-              required
+              value={opt.text}
+              onChange={(e) => updateOption(index, e.target.value)}
+              placeholder={`Option ${index + 1}`}
+              disabled={loading}
             />
             {options.length > 2 && (
-              <Button type="button" variant="destructive" onClick={() => removeOption(idx)}>
-                Remove
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => removeOption(index)}
+                disabled={loading}
+              >
+                <X className="h-4 w-4" />
               </Button>
             )}
           </div>
         ))}
-        <Button type="button" onClick={addOption} variant="secondary">
+        <Button type="button" onClick={addOption} disabled={loading}>
+          <Plus className="mr-2 h-4 w-4" />
           Add Option
         </Button>
       </div>
-      <div className="space-y-1">
-        <Label htmlFor="dueDate">Due Date (Optional)</Label>
-        <Input
-          id="dueDate"
-          type="datetime-local"
-          value={dueDate}
-          onChange={e => setDueDate(e.target.value)}
-        />
-      </div>
-      {error && <div className="text-red-500">{error}</div>}
-      {success && <div className="text-green-600">Poll updated! Redirecting...</div>}
-      <Button type="submit">Update Poll</Button>
+
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? 'Updating poll...' : 'Update Poll'}
+      </Button>
     </form>
   );
 }

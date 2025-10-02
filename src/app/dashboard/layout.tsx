@@ -96,14 +96,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="p-4 border-t border-slate-700">
         <div className="flex items-center space-x-3">
           <Avatar className="w-10 h-10">
-            <AvatarImage src={user?.user_metadata?.avatar_url} />
+            <AvatarImage src={undefined} />
             <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
               {user?.email?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">
-              {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+              {user?.email?.split('@')[0]}
             </p>
             <p className="text-xs text-slate-400 truncate">{user?.email}</p>
           </div>
@@ -168,7 +168,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user?.user_metadata?.avatar_url} />
+                      <AvatarImage src={undefined} />
                       <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
                         {user?.email?.charAt(0).toUpperCase()}
                       </AvatarFallback>
@@ -179,7 +179,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                        {user?.email?.split('@')[0]}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {user?.email}

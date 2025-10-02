@@ -1,18 +1,18 @@
 'use client'
 
-import { PollOption } from '@/types'
+import { Poll } from '@/types/index'
 
 interface PollResultsChartProps {
-  options: PollOption[]
+  options: Poll['options']
   className?: string
 }
 
 export function PollResultsChart({ options, className }: PollResultsChartProps) {
   // Calculate total votes
-  const totalVotes = options.reduce((sum, option) => sum + option.votes, 0)
+  const totalVotes = options.reduce((sum, option) => sum + option._count.votes, 0)
   
   // Sort options by votes (descending)
-  const sortedOptions = [...options].sort((a, b) => b.votes - a.votes)
+  const sortedOptions = [...options].sort((a, b) => b._count.votes - a._count.votes)
   
   // Generate colors for bars
   const colors = [
@@ -31,7 +31,7 @@ export function PollResultsChart({ options, className }: PollResultsChartProps) 
   return (
     <div className={`space-y-4 ${className}`}>
       {sortedOptions.map((option, index) => {
-        const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0
+        const percentage = totalVotes > 0 ? Math.round((option._count.votes / totalVotes) * 100) : 0
         const barColor = colors[index % colors.length]
         
         return (
@@ -41,7 +41,7 @@ export function PollResultsChart({ options, className }: PollResultsChartProps) 
                 {option.text}
               </span>
               <span className="text-gray-600">
-                {option.votes} votes ({percentage}%)
+                {option._count.votes} votes ({percentage}%)
               </span>
             </div>
             

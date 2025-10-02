@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/prisma';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, TrendingUp, Users, Vote } from 'lucide-react';
@@ -21,7 +21,7 @@ interface Poll {
 
 export default async function AnalyticsPage() {
   // Fetch polls with their options from Prisma
-  const pollsData = await prisma.poll.findMany({
+  const pollsData = await db.poll.findMany({
     orderBy: { createdAt: 'desc' },
     include: { options: true }, // Include options for each poll
   });

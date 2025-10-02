@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import { PollResultsChart } from './poll-results-chart'
-import { PollOption } from '@/types'
+import { Poll } from '@/types/index'
 
 describe('PollResultsChart', () => {
-  const mockOptions: PollOption[] = [
-    { id: '1', poll_id: 'poll1', text: 'Option 1', votes: 10 },
-    { id: '2', poll_id: 'poll1', text: 'Option 2', votes: 5 },
-    { id: '3', poll_id: 'poll1', text: 'Option 3', votes: 0 },
+  const mockOptions: Poll['options'] = [
+    { id: '1', text: 'Option 1', _count: { votes: 10 } },
+    { id: '2', text: 'Option 2', _count: { votes: 5 } },
+    { id: '3', text: 'Option 3', _count: { votes: 0 } },
   ]
 
   it('renders all poll options', () => {

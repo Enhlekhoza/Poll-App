@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/prisma';
 import { sendPollClosingEmail } from '@/lib/email/resend';
 import { NextResponse } from 'next/server';
 
@@ -7,7 +7,7 @@ export async function GET() {
     const twentyFourHoursFromNow = new Date();
     twentyFourHoursFromNow.setHours(twentyFourHoursFromNow.getHours() + 24);
 
-    const polls = await prisma.poll.findMany({
+    const polls = await db.poll.findMany({
       where: {
         dueDate: {
           lte: twentyFourHoursFromNow,

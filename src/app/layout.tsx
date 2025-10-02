@@ -1,6 +1,8 @@
 import "./globals.css"
 import { Poppins } from "next/font/google"
 import ClientProviders from "./ClientProviders"
+import { AuthProvider } from "@/contexts/AuthContext"
+import { Metadata } from "next"
 
 // Configure Poppins font
 const poppins = Poppins({
@@ -15,13 +17,12 @@ export const metadata: Metadata = {
   description: "Create and share polls with ease.",
 }
 
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={poppins.variable}>
       <body className={poppins.className}>
         <ClientProviders>
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </ClientProviders>
       </body>
     </html>

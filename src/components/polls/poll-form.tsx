@@ -17,7 +17,11 @@ export function PollForm() {
   const router = useRouter()
 
   const addOption = () => setOptions([...options, ""])
-  const removeOption = (index: number) => setOptions(options.filter((_, i) => i !== index))
+  const removeOption = (index: number) => {
+    // Don't allow removing if only 2 options remain
+    if (options.length <= 2) return
+    setOptions(options.filter((_, i) => i !== index))
+  }
   const updateOption = (index: number, value: string) => {
     const newOptions = [...options]
     newOptions[index] = value
@@ -53,7 +57,9 @@ export function PollForm() {
       setDescription("")
       setOptions(["", ""])
       setDueDate("")
-      router.push(`/dashboard/polls/${result.poll.id}`)
+      if (result.poll) {
+        router.push(`/dashboard/polls/${result.poll.id}`)
+      }
     }
   }
 

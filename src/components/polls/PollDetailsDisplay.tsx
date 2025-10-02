@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getPollById, votePoll } from "@/lib/actions/poll-actions"
-import { Poll } from "@/types"
+import { Poll } from "@/types/index"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -55,7 +55,7 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
     // Optimistic UI Update
     const originalPoll = { ...poll }; // Store original poll state
     const updatedOptions = poll.options.map(option =>
-      option.id === optionId ? { ...option, votes: option.votes + 1 } : option
+      option.id === optionId ? { ...option, _count: { votes: option._count.votes + 1 } } : option
     );
     setPoll({ ...poll, options: updatedOptions });
     setUserVoted(true); // Assume vote will succeed
@@ -82,7 +82,7 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <LoadingSpinner />
       </div>
     )
   }
@@ -95,7 +95,7 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
     )
   }
 
-  const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0)
+  const totalVotes = poll.options.reduce((sum, option) => sum + option._count.votes, 0)
 
   return (
     <div className="container mx-auto py-8">
@@ -130,7 +130,7 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
             {totalVotes === 0 ? (
               <p>No votes yet. Be the first to vote!</p>
             ) : (
-              <PollResultsChart data={poll.options.map(option => ({ name: option.text, votes: option.votes }))} />
+              <PollResultsChart options={poll.options} />
             )}
             <p className="text-sm text-gray-500">Total Votes: {totalVotes}</p>
           </div>
@@ -144,7 +144,7 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
             <div></div> // Empty div for spacing if not dashboard view
           )}
           <div className="flex gap-2">
-            {isDashboardView && user?.id === poll.user_id && (
+            {isDashboardView && user?.id === poll.author?.id && (
               <Link href={`/dashboard/polls/${poll.id}/edit`}>
                 <Button size="sm">Edit Poll</Button>
               </Link>

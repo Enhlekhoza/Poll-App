@@ -1,160 +1,108 @@
-"use client"
-d
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { toast } from "sonner"
-import { Lock, Eye, EyeOff } from "lucide-react" // Import Lock, Eye, EyeOff icons
+"use client";
 
-import { useAuth } from "@/contexts/AuthContext"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-
-const formSchema = z.object({
-  email: z.string().email({ message: "Enter a valid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-})
+import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
-  const { signIn } = useAuth()
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false) // State for password visibility
+  const { data: session } = useSession();
+  const router = useRouter();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  })
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
-    const { error } = await signIn(values.email, values.password)
-    setIsLoading(false)
-
-    if (error) {
-      toast.error(error)
-    } else {
-      router.push("/dashboard")
-    }
+  if (session) {
+    router.replace("/dashboard");
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <p className="text-center">Redirecting to dashboard...</p>
+      </div>
+    );
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const result = await signIn("credentials", {
+      redirect: false,
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (result?.error) {
+      setError(result.error);
+    } else {
+      router.replace("/dashboard");
+    }
+  };
+
   return (
-    <Card className="w-full max-w-sm border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-      <CardHeader className="space-y-1 text-center">
-        <div className="flex justify-center mb-4">
-          <Lock className="h-10 w-10 text-indigo-600" />
-        </div>
-        <CardTitle className="text-2xl font-bold">Login</CardTitle>
-        <CardDescription>
-          Enter your credentials to access your account.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="mb-2">Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      id="email"
-                      placeholder="m@example.com"
-                      type="email"
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      autoCorrect="off"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+    <div className="flex flex-1 items-center justify-center w-full">
+      <div className="w-full max-w-md p-8 shadow-lg rounded-lg bg-white">
+        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+
+        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@example.com"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="mb-2">Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        placeholder="••••••••"
-                        type={showPassword ? "text" : "password"} // Dynamic type
-                        autoComplete="current-password"
-                        {...field}
-                        className="pr-10" // Add padding for the icon
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                      >
-                        {showPassword ? (
-                          <Eye className="h-4 w-4 text-gray-500" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-500" />
-                        )}
-                        <span className="sr-only">
-                          {showPassword ? "Hide password" : "Show password"}
-                        </span>
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <div className="relative">
+            <label htmlFor="password" className="block text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="Enter password"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
-              disabled={isLoading}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-9 text-gray-400"
             >
-              {isLoading && <LoadingSpinner className="mr-2" />}
-              Login
-            </Button>
-          </form>
-        </Form>
-        <div className="mt-4 text-center text-sm">
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing in..." : "Login"}
+          </Button>
+        </form>
+
+        <p className="mt-6 text-center text-gray-600">
           Don't have an account?{" "}
-          <Link href="/auth/register" className="text-primary hover:underline">
-            Sign up
+          <Link href="/auth/register" className="text-indigo-600 underline">
+            Register
           </Link>
-        </div>
-        <div className="mt-2 text-center text-sm">
-          <Link href="/auth/forgot-password" className="text-primary hover:underline">
-            Forgot password?
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  )
+        </p>
+      </div>
+    </div>
+  );
 }

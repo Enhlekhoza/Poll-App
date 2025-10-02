@@ -1,30 +1,25 @@
-export interface Poll {
-  id: string
-  title: string
-  description?: string
-  options: PollOption[]
-  created_at: string
-  user_id: string
-  total_votes?: number
-}
+export type Poll = {
+  id: string;
+  title: string;
+  description: string | null;
+  options: {
+    id: string;
+    text: string;
+    _count: {
+      votes: number;
+    };
+  }[];
+  author: {
+    id: string;
+    name?: string | null;
+  } | null;
+  createdAt: Date;
+};
 
-export interface PollOption {
-  id: string
-  text: string
-  votes: number
-  poll_id: string
-}
-
-export interface User {
-  id: string
-  email: string
-  username: string
-}
-
-export interface Vote {
-  id: string
-  poll_id: string
-  option_id: string
-  user_id: string | null
-  created_at: string
+export type Comment = {
+    id: string;
+    text: string;
+    author: {
+        email: string;
+    };
 }

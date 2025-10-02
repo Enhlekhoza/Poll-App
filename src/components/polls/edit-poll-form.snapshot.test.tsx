@@ -3,10 +3,9 @@ import { EditPollForm } from './edit-poll-form'
 import { createMockPoll } from './edit-poll-form.test.utils'
 
 // Import the types to ensure we're using them correctly
-import { Poll } from '@/types'
+import { Poll } from '@/types/index'
 
 // Mock dependencies
-jest.mock('@/lib/supabase')
 jest.mock('sonner')
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
@@ -32,8 +31,8 @@ describe('EditPollForm Snapshot Tests', () => {
     const minimalPoll: Poll = createMockPoll({
       description: undefined,
       options: [
-        { id: 'option-1', text: 'Option 1', votes: 0, poll_id: 'poll-123' },
-        { id: 'option-2', text: 'Option 2', votes: 0, poll_id: 'poll-123' },
+        { id: 'option-1', text: 'Option 1', _count: { votes: 0 } },
+        { id: 'option-2', text: 'Option 2', _count: { votes: 0 } },
       ],
     })
     
@@ -49,8 +48,7 @@ describe('EditPollForm Snapshot Tests', () => {
     const manyOptions = Array.from({ length: 5 }, (_, i) => ({
       id: `option-${i}`,
       text: `Option ${i + 1}`,
-      votes: i,
-      poll_id: 'poll-123'
+      _count: { votes: i },
     }))
     
     const pollWithManyOptions: Poll = createMockPoll({ options: manyOptions })

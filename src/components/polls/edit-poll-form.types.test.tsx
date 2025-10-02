@@ -1,9 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EditPollForm } from './edit-poll-form'
-import type { Poll, PollOption } from '@/types'
+import type { Poll } from '@/types/index'
 
 // Mock dependencies
-jest.mock('@/lib/supabase')
 jest.mock('sonner')
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
@@ -18,11 +17,12 @@ describe('EditPollForm Type Compatibility Tests', () => {
     const minimalPoll: Poll = {
       id: 'poll-min',
       title: 'Minimal Poll',
-      created_at: new Date().toISOString(),
-      user_id: 'user-123',
+      description: null, // Add description as null to satisfy the type
+      createdAt: new Date(),
+      author: { id: 'user-123', name: 'testuser' },
       options: [
-        { id: 'option-min-1', text: 'Min Option 1', votes: 0, poll_id: 'poll-min' },
-        { id: 'option-min-2', text: 'Min Option 2', votes: 0, poll_id: 'poll-min' },
+        { id: 'option-min-1', text: 'Min Option 1', _count: { votes: 0 } },
+        { id: 'option-min-2', text: 'Min Option 2', _count: { votes: 0 } },
       ],
     }
     
@@ -40,12 +40,11 @@ describe('EditPollForm Type Compatibility Tests', () => {
       id: 'poll-complete',
       title: 'Complete Poll',
       description: 'This poll has all fields',
-      created_at: new Date().toISOString(),
-      user_id: 'user-123',
-      total_votes: 42, // Optional field in Poll type
+      createdAt: new Date(),
+      author: { id: 'user-123', name: 'testuser' },
       options: [
-        { id: 'option-complete-1', text: 'Complete Option 1', votes: 20, poll_id: 'poll-complete' },
-        { id: 'option-complete-2', text: 'Complete Option 2', votes: 22, poll_id: 'poll-complete' },
+        { id: 'option-complete-1', text: 'Complete Option 1', _count: { votes: 20 } },
+        { id: 'option-complete-2', text: 'Complete Option 2', _count: { votes: 22 } },
       ],
     }
     
@@ -59,16 +58,17 @@ describe('EditPollForm Type Compatibility Tests', () => {
 
   it('correctly handles PollOption objects from index.ts', () => {
     // Create poll options using the PollOption type
-    const options: PollOption[] = [
-      { id: 'option-1', text: 'First Option', votes: 10, poll_id: 'poll-options' },
-      { id: 'option-2', text: 'Second Option', votes: 5, poll_id: 'poll-options' },
+    const options: Poll['options'] = [
+      { id: 'option-1', text: 'First Option', _count: { votes: 10 } },
+      { id: 'option-2', text: 'Second Option', _count: { votes: 5 } },
     ]
     
     const pollWithTypedOptions: Poll = {
       id: 'poll-options',
       title: 'Poll with Typed Options',
-      created_at: new Date().toISOString(),
-      user_id: 'user-123',
+      description: null, // Add description as null to satisfy the type
+      createdAt: new Date(),
+      author: { id: 'user-123', name: 'testuser' },
       options,
     }
     

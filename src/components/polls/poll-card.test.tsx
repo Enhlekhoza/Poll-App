@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { PollCard } from './poll-card'
-import { Poll } from '@/types'
+import { Poll } from '@/types/index'
 
 // Mock Next.js Link component
 jest.mock('next/link', () => {
@@ -12,13 +12,13 @@ jest.mock('next/link', () => {
 describe('PollCard', () => {
   const mockPoll: Poll = {
     id: 'poll-123',
-    question: 'Test Question',
+    title: 'Test Question',
     description: 'Test Description',
-    user_id: 'user-123',
-    created_at: '2023-01-01T00:00:00Z',
+    createdAt: new Date(),
+    author: { id: 'user-123', name: 'testuser' },
     options: [
-      { id: 'option-1', poll_id: 'poll-123', text: 'Option 1', votes: 5 },
-      { id: 'option-2', poll_id: 'poll-123', text: 'Option 2', votes: 10 },
+      { id: 'option-1', text: 'Option 1', _count: { votes: 5 } },
+      { id: 'option-2', text: 'Option 2', _count: { votes: 10 } },
     ],
   }
 
@@ -33,7 +33,7 @@ describe('PollCard', () => {
   })
 
   it('does not render description when not available', () => {
-    const pollWithoutDescription = { ...mockPoll, description: undefined }
+    const pollWithoutDescription: Poll = { ...mockPoll, description: undefined }
     render(<PollCard poll={pollWithoutDescription} />)
     expect(screen.queryByText('Test Description')).not.toBeInTheDocument()
   })

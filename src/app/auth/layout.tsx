@@ -28,9 +28,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <Image
             src="/globe.svg" // Using an existing SVG as a placeholder
             alt="Background Illustration"
-            layout="fill"
-            objectFit="cover"
-            className="opacity-50"
+            fill // Use the fill prop directly
+            className="opacity-50 object-cover" // Add object-cover to className
           />
         </div>
         <div className="relative z-10 text-center text-white">

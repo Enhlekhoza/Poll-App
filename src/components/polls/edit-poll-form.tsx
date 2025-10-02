@@ -1,13 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabase/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { Poll, PollOption } from "@/types"
+import { Poll } from "@/types/index"
 import { useRouter } from "next/navigation"
+import { updatePoll } from "@/lib/actions/poll-actions"
+import { Textarea } from "@/components/ui/textarea"
+import { X, Plus } from "lucide-react"
 
 interface EditPollFormProps {
   poll: Poll
@@ -17,10 +19,10 @@ export function EditPollForm({ poll }: EditPollFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(poll.title)
   const [description, setDescription] = useState(poll.description || "")
-  const [options, setOptions] = useState<PollOption[]>(poll.options)
+  const [options, setOptions] = useState<Poll['options']>(poll.options)
   const [loading, setLoading] = useState(false)
 
-  const addOption = () => setOptions([...options, { id: `new-${Date.now()}`, text: "", votes: 0, poll_id: poll.id }])
+  const addOption = () => setOptions([...options, { id: `new-${Date.now()}`, text: "", _count: { votes: 0 } }])
   
   const removeOption = (index: number) => {
     // Don't allow removing if only 2 options remain
@@ -42,46 +44,21 @@ export function EditPollForm({ poll }: EditPollFormProps) {
 
     setLoading(true)
     try {
-      // Update poll
-      const { error: pollError } = await supabase
-        .from("polls")
-        .update({ title, description: description || null })
-        .eq("id", poll.id)
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      options.forEach(option => formData.append("options", option.text));
+      options.forEach(option => formData.append("optionIds", option.id));
 
-      if (pollError) throw pollError
+      const { success, error } = await updatePoll(poll.id, formData);
 
-      // Handle existing options (update)
-      const existingOptions = options.filter(opt => !opt.id.startsWith('new-'))
-      for (const option of existingOptions) {
-        const { error } = await supabase
-          .from("poll_options")
-          .update({ text: option.text })
-          .eq("id", option.id)
-        
-        if (error) throw error
-      }
-
-      // Handle new options (insert)
-      const newOptions = options.filter(opt => opt.id.startsWith('new-'))
-      if (newOptions.length > 0) {
-        const newOptionsPayload = newOptions.map(opt => ({
-          poll_id: poll.id,
-          text: opt.text,
-          votes: 0
-        }))
-
-        const { error } = await supabase
-          .from("poll_options")
-          .insert(newOptionsPayload)
-
-        if (error) throw error
-      }
+      if (error) throw new Error(error);
 
       toast.success("Poll updated successfully!")
       router.refresh() // Refresh the page to show updated data
 
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update poll")
+      toast.error(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
@@ -102,7 +79,7 @@ export function EditPollForm({ poll }: EditPollFormProps) {
 
       <div className="space-y-1">
         <Label htmlFor="description">Description (Optional)</Label>
-        <Input
+        <Textarea
           id="description"
           value={description}
           onChange={e => setDescription(e.target.value)}
@@ -128,12 +105,13 @@ export function EditPollForm({ poll }: EditPollFormProps) {
                 onClick={() => removeOption(index)}
                 disabled={loading}
               >
-                Remove
+                <X className="h-4 w-4" />
               </Button>
             )}
           </div>
         ))}
         <Button type="button" onClick={addOption} disabled={loading}>
+          <Plus className="mr-2 h-4 w-4" />
           Add Option
         </Button>
       </div>

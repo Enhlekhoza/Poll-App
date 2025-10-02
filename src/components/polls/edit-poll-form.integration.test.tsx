@@ -1,15 +1,13 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { EditPollForm } from './edit-poll-form'
-import { createMockPoll, setupSuccessfulSupabaseMock, setupErrorSupabaseMock } from './edit-poll-form.test.utils'
-import { supabase } from '@/lib/supabase/supabase'
+import { createMockPoll, createMockPollOption } from './edit-poll-form.test.utils'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
 // Import the types to ensure we're using them correctly
-import { Poll, PollOption } from '@/types'
+import { Poll } from '@/types/index'
 
 // Mock dependencies
-jest.mock('@/lib/supabase')
 jest.mock('sonner')
 jest.mock('next/navigation')
 
@@ -34,7 +32,7 @@ describe('EditPollForm Integration Tests', () => {
       expect(screen.getByLabelText(/Description/i)).toHaveValue(typedPoll.description)
       
       // Check if options from the typed poll are rendered
-      typedPoll.options.forEach((option: PollOption) => {
+      typedPoll.options.forEach((option) => {
         const optionInputs = screen.getAllByPlaceholderText(/Option \d/)
         const optionInput = optionInputs.find(input => input.getAttribute('value') === option.text)
         expect(optionInput).toBeInTheDocument()
@@ -55,7 +53,6 @@ describe('EditPollForm Integration Tests', () => {
   describe('Form Submission', () => {
     it('correctly formats data according to Poll and PollOption types when submitting', async () => {
       // Setup mock for successful submission
-      setupSuccessfulSupabaseMock(supabase)
       
       const typedPoll: Poll = createMockPoll()
       render(<EditPollForm poll={typedPoll} />)
@@ -79,12 +76,10 @@ describe('EditPollForm Integration Tests', () => {
       })
       
       // Verify that supabase was called with correctly typed data
-      expect(supabase.from).toHaveBeenCalledWith('polls')
     })
 
     it('handles errors while maintaining type integrity', async () => {
       // Setup mock for failed submission
-      setupErrorSupabaseMock(supabase)
       
       const typedPoll: Poll = createMockPoll()
       render(<EditPollForm poll={typedPoll} />)
@@ -103,12 +98,9 @@ describe('EditPollForm Integration Tests', () => {
   describe('Edge Cases with Types', () => {
     it('handles a poll with many options', () => {
       // Create a poll with many options
-      const manyOptions: PollOption[] = Array.from({ length: 10 }, (_, i) => ({
-        id: `option-${i}`,
-        text: `Option ${i + 1}`,
-        votes: i,
-        poll_id: 'poll-123'
-      }))
+      const manyOptions = Array.from({ length: 10 }, (_, i) => (
+        createMockPollOption({ id: `option-${i}`, text: `Option ${i + 1}`, _count: { votes: i } })
+      ))
       
       const pollWithManyOptions: Poll = createMockPoll({ options: manyOptions })
       
@@ -125,9 +117,9 @@ describe('EditPollForm Integration Tests', () => {
 
     it('handles options with zero votes', () => {
       // Create options with zero votes
-      const zeroVoteOptions: PollOption[] = [
-        { id: 'option-1', text: 'Zero Vote Option 1', votes: 0, poll_id: 'poll-123' },
-        { id: 'option-2', text: 'Zero Vote Option 2', votes: 0, poll_id: 'poll-123' }
+      const zeroVoteOptions = [
+        createMockPollOption({ id: 'option-1', text: 'Zero Vote Option 1', _count: { votes: 0 } }),
+        createMockPollOption({ id: 'option-2', text: 'Zero Vote Option 2', _count: { votes: 0 } }),
       ]
       
       const pollWithZeroVotes: Poll = createMockPoll({ options: zeroVoteOptions })

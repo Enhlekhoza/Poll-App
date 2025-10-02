@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { getPollById, deletePoll } from "@/lib/actions/poll-actions"
-import { Poll } from "@/types"
+import { Poll } from "@/types/index"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -21,6 +21,11 @@ export default function DeletePollPage() {
   useEffect(() => {
     const fetchPoll = async () => {
       setLoading(true)
+      if (!pollId) {
+        toast.error("Poll ID is missing.")
+        setLoading(false)
+        return;
+      }
       const { poll, error } = await getPollById(pollId)
       if (error) {
         toast.error(error)
@@ -37,6 +42,11 @@ export default function DeletePollPage() {
 
   const handleDelete = async () => {
     setDeleting(true)
+    if (!pollId) {
+      toast.error("Poll ID is missing.")
+      setDeleting(false)
+      return;
+    }
     const { success, error } = await deletePoll(pollId)
     setDeleting(false)
 
@@ -51,7 +61,7 @@ export default function DeletePollPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <LoadingSpinner />
       </div>
     )
   }

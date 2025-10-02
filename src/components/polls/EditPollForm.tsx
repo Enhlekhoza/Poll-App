@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { updatePoll } from "@/lib/actions/poll-actions"
 import { useRouter } from "next/navigation"
-import { Poll, PollOption } from "@/types"
+import { Poll } from "@/types/index"
 import { Textarea } from "@/components/ui/textarea"
 import { X, Plus } from "lucide-react"
 
@@ -25,7 +25,11 @@ export function EditPollForm({ poll }: EditPollFormProps) {
   const router = useRouter()
 
   const addOption = () => setOptions([...options, { text: "" }])
-  const removeOption = (index: number) => setOptions(options.filter((_, i) => i !== index))
+  const removeOption = (index: number) => {
+    // Don't allow removing if only 2 options remain
+    if (options.length <= 2) return
+    setOptions(options.filter((_, i) => i !== index))
+  }
   const updateOption = (index: number, value: string) => {
     const newOptions = [...options]
     newOptions[index].text = value
@@ -55,7 +59,7 @@ export function EditPollForm({ poll }: EditPollFormProps) {
     setLoading(false)
 
     if (!result.success) {
-      toast.error(result.error)
+      toast.error(result.error instanceof Error ? result.error.message : String(result.error))
     } else {
       toast.success("Poll updated successfully!")
       router.push(`/dashboard/polls/${poll.id}`)

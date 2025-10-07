@@ -1,0 +1,15 @@
+{
+  "title": "What's your favorite programming language?",
+  "description": "Pick the one you use most often.",
+  "dueDate": "2025-10-07T10:00",
+  "tags": ["technology", "developer", "survey"],
+  "options": [
+    "JavaScript",
+    "Python",
+    "Java",
+    "Go"
+  ]
+}
+
+
+

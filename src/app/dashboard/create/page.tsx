@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { X, Plus, Vote, FileText, ListChecks } from "lucide-react"
+import { X, Plus, Vote, FileText, ListChecks, Calendar, Tag as TagIcon, Upload } from "lucide-react"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import { createPoll } from "@/lib/actions/poll-actions"
 
@@ -18,6 +18,8 @@ import { createPoll } from "@/lib/actions/poll-actions"
 const pollFormSchema = z.object({
   title: z.string().min(1, "Title is required."),
   description: z.string().optional(),
+  dueDate: z.string().optional(),
+  tags: z.string().optional(), // comma-separated for now
   options: z
     .array(
       z.object({
@@ -37,12 +39,14 @@ export default function CreatePollPage() {
     defaultValues: {
       title: "",
       description: "",
+      dueDate: "",
+      tags: "",
       options: [{ value: "" }, { value: "" }],
     },
     mode: "onChange",
   })
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "options",
   })
@@ -53,6 +57,15 @@ export default function CreatePollPage() {
     if (data.description) {
       formData.append("description", data.description)
     }
+    if (data.dueDate) {
+      try {
+        const iso = new Date(data.dueDate).toISOString()
+        formData.append("due_date", iso)
+      } catch {}
+    }
+    if (data.tags) {
+      formData.append("tags", data.tags)
+    }
     data.options.forEach(option => formData.append("options", option.value))
 
     const result = await createPoll(formData)
@@ -62,10 +75,143 @@ export default function CreatePollPage() {
     } else {
       toast.success("Poll created successfully!")
       form.reset() // Reset the form to default values
-      if (result.poll) {
-        router.push(`/dashboard/polls/${result.poll.id}`) // Redirect to the newly created poll
-      }
+      router.push(`/dashboard/polls`) // Redirect to the polls list
     }
+  }
+
+  const fileInputRef = (typeof document !== 'undefined') ? document.createElement('input') : null
+  const handleImportFile = async (file: File) => {
+    try {
+      const text = await file.text()
+      let title: string | undefined
+      let description: string | undefined
+      let options: string[] | undefined
+      let dueDate: string | undefined
+      let tags: string[] | undefined
+
+      if (file.name.endsWith('.json')) {
+        const json = JSON.parse(text)
+        title = json.title || json.question
+        description = json.description || json.desc
+        if (Array.isArray(json.options)) {
+          options = json.options.map((o: any) => String(typeof o === 'object' ? (o.value || o.text || '') : o)).filter(Boolean)
+        }
+        if (json.dueDate || json.due_date) {
+          dueDate = String(json.dueDate || json.due_date)
+        }
+        if (Array.isArray(json.tags)) {
+          tags = json.tags.map((t: any) => String(t)).filter(Boolean)
+        }
+      } else if (file.name.endsWith('.csv')) {
+        // CSV: first row title, second row description (optional), remaining rows options
+        const rows = text.split(/\r?\n/).map(r => r.trim()).filter(r => r.length > 0)
+        if (rows.length > 0) title = rows[0]
+        if (rows.length > 2) {
+          description = rows[1]
+          // allow optional meta line starting with # for due/tags
+          const rest = rows.slice(2)
+          if (rest[0]?.toLowerCase().startsWith('#')) {
+            const meta = rest.shift() as string
+            const dueMatch = meta.match(/due:(\S+)/i)
+            if (dueMatch) dueDate = dueMatch[1]
+            const tagsMatch = meta.match(/tags:([^#]+)/i)
+            if (tagsMatch) tags = tagsMatch[1].split(',').map(s => s.trim()).filter(Boolean)
+          }
+          options = rest
+        } else if (rows.length > 1) {
+          options = rows.slice(1)
+        }
+      } else {
+        // TXT: first non-empty line title; if a blank line afterward, next lines are options; otherwise lines after title are options
+        const lines = text.split(/\r?\n/)
+        const cleaned = lines.map(l => l.trim())
+        const nonEmptyIdx = cleaned.findIndex(l => l.length > 0)
+        if (nonEmptyIdx >= 0) {
+          title = cleaned[nonEmptyIdx]
+          const rest = cleaned.slice(nonEmptyIdx + 1)
+          // support meta lines starting with # e.g. # due:2025-10-07T10:00,tags:alpha,beta
+          if (rest[0]?.startsWith('#')) {
+            const meta = rest.shift() as string
+            const dueMatch = meta.match(/due:(\S+)/i)
+            if (dueMatch) dueDate = dueMatch[1]
+            const tagsMatch = meta.match(/tags:([^#]+)/i)
+            if (tagsMatch) tags = tagsMatch[1].split(',').map(s => s.trim()).filter(Boolean)
+          }
+          const blankIdx = rest.findIndex(l => l.length === 0)
+          if (blankIdx >= 0) {
+            // description between title and blank line (optional)
+            const maybeDesc = rest.slice(0, blankIdx).join(' ').trim()
+            description = maybeDesc.length > 0 ? maybeDesc : undefined
+            options = rest.slice(blankIdx + 1).filter(l => l.length > 0)
+          } else {
+            options = rest.filter(l => l.length > 0)
+          }
+        }
+      }
+
+      if (title) form.setValue('title', String(title))
+      if (description) form.setValue('description', String(description))
+      if (dueDate) {
+        try {
+          // normalize to input[type=datetime-local] value (YYYY-MM-DDTHH:mm)
+          const d = new Date(dueDate)
+          const local = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16)
+          form.setValue('dueDate', local)
+        } catch {}
+      }
+      if (tags && tags.length > 0) {
+        form.setValue('tags', tags.join(', '))
+      }
+      if (options && options.length > 0) {
+        // ensure at least 2
+        const normalized = options.map(v => ({ value: String(v) }))
+        replace(normalized.length >= 2 ? normalized : [...normalized, { value: '' }])
+      }
+      toast.success('Imported content applied')
+    } catch (e) {
+      toast.error('Failed to import file')
+    }
+  }
+
+  const handleDownloadTemplate = (type: 'json' | 'csv' | 'txt') => {
+    let filename = `poll-template.${type}`
+    let content = ''
+    if (type === 'json') {
+      content = JSON.stringify({
+        title: "What's your favorite programming language?",
+        description: "Pick the one you use most often.",
+        options: ["JavaScript", "Python", "Java", "Go"]
+      }, null, 2)
+    } else if (type === 'csv') {
+      content = [
+        "What's your favorite programming language?",
+        "Pick the one you use most often.",
+        "JavaScript",
+        "Python",
+        "Java",
+        "Go"
+      ].join('\n')
+    } else {
+      content = [
+        "What's your favorite programming language?",
+        "",
+        "Pick the one you use most often.",
+        "",
+        "JavaScript",
+        "Python",
+        "Java",
+        "Go"
+      ].join('\n')
+    }
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -94,6 +240,64 @@ export default function CreatePollPage() {
             <CardContent className="space-y-8">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                  {/* AI Assist & Import Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-gray-900">AI Assist & Import</h3>
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <Input className="flex-1" placeholder="Describe your poll (e.g., Feedback on new feature launch)" onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const prompt = (e.target as HTMLInputElement).value
+                          if (!prompt) return
+                          const res = await fetch('/api/ai/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) })
+                          const data = await res.json()
+                          if (data?.title) form.setValue('title', data.title)
+                          if (data?.description) form.setValue('description', data.description)
+                          if (Array.isArray(data?.options) && data.options.length > 1) {
+                            replace(data.options.map((v: string) => ({ value: v })))
+                          }
+                          toast[data.error ? 'error' : 'success'](data.error ? 'AI failed to generate' : 'AI suggestions applied')
+                        }
+                      }} />
+                      <Button type="button" className="md:w-auto" onClick={async () => {
+                        const prompt = (document.activeElement as HTMLInputElement)?.value || 'Create a poll'
+                        const res = await fetch('/api/ai/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) })
+                        const data = await res.json()
+                        if (data?.title) form.setValue('title', data.title)
+                        if (data?.description) form.setValue('description', data.description)
+                        if (Array.isArray(data?.options) && data.options.length > 1) {
+                          replace(data.options.map((v: string) => ({ value: v })))
+                        }
+                        toast[data.error ? 'error' : 'success'](data.error ? 'AI failed to generate' : 'AI suggestions applied')
+                      }}>Generate</Button>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <input
+                        type="file"
+                        accept=".txt,.csv,.json"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (f) handleImportFile(f)
+                        }}
+                        className="block w-full md:w-auto text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}>
+                        <Upload className="w-4 h-4 mr-2" /> Choose file
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap"></div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate('json')}>Download JSON template</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate('csv')}>Download CSV template</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate('txt')}>Download TXT template</Button>
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-2 bg-gray-50 p-3 rounded-md">
+                      <p><strong>JSON</strong>: {`{"title","description","options":[]}`}</p>
+                      <p><strong>CSV</strong>: first row = title, second = description (optional), others = options; optional meta row starting with # e.g. {`# due:2025-10-07T10:00,tags:alpha,beta`}</p>
+                      <p><strong>TXT</strong>: first line = title; optional meta line starting with #; blank line; optional description; blank line; options</p>
+                    </div>
+                  </div>
+
                   {/* Title Section */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
@@ -106,9 +310,9 @@ export default function CreatePollPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Input
+                            <Textarea
                               placeholder="What's your favorite programming language?"
-                              className="text-lg py-3 px-4 border-2 border-gray-200 focus:border-blue-500 transition-colors"
+                              className="min-h-[80px] text-lg py-3 px-4 border-2 border-gray-200 focus:border-blue-500 transition-colors"
                               {...field}
                             />
                           </FormControl>
@@ -140,6 +344,46 @@ export default function CreatePollPage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  {/* Due Date & Tags */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Due date (Optional)</h3>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="dueDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input type="datetime-local" className="border-2 border-gray-200 focus:border-blue-500" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <TagIcon className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Tags (Optional)</h3>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="tags"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input placeholder="e.g. marketing, survey, 2025" className="border-2 border-gray-200 focus:border-blue-500" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
                   {/* Options Section */}

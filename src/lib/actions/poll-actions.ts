@@ -5,7 +5,9 @@ import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
-import auth from '@/lib/auth';
+import { Resend } from 'resend';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 // Schemas
 const createPollSchema = z.object({
@@ -26,7 +28,7 @@ const updatePollSchema = z.object({
 // Get user polls
 export async function getUserPolls(limit: number = 10, offset: number = 0) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) return { polls: [], error: 'User not authenticated' };
 
     const polls = await db.poll.findMany({
@@ -52,19 +54,25 @@ export async function getUserPolls(limit: number = 10, offset: number = 0) {
 // Create poll
 export async function createPoll(formData: FormData) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) return { success: false, error: 'User not authenticated' };
 
+    const dueRaw = formData.get('due_date');
+    const descRaw = formData.get('description');
     const validatedFields = createPollSchema.safeParse({
       title: formData.get('title'),
-      description: formData.get('description'),
+      description: typeof descRaw === 'string' && descRaw.length > 0 ? descRaw : undefined,
       options: formData.getAll('options'),
-      due_date: formData.get('due_date'),
+      due_date: typeof dueRaw === 'string' && dueRaw.length > 0 ? dueRaw : undefined,
     });
 
     if (!validatedFields.success) {
-      const errorMessages = Object.values(validatedFields.error.flatten().fieldErrors).join(', ');
-      return { success: false, error: errorMessages };
+      const flat = validatedFields.error.flatten();
+      const fieldErrors = Object.entries(flat.fieldErrors)
+        .flatMap(([field, messages]) => (messages || []).map(msg => `${field}: ${msg}`));
+      const formErrors = flat.formErrors || [];
+      const errorMessages = [...fieldErrors, ...formErrors].join(', ');
+      return { success: false, error: errorMessages || 'Invalid input' };
     }
 
     const { title, description, options, due_date } = validatedFields.data;
@@ -90,18 +98,12 @@ export async function createPoll(formData: FormData) {
 // Vote poll
 export async function votePoll(pollId: string, optionId: string) {
   try {
-    const session = await auth();
-    const cookieStore = cookies();
-    let voterIdentifier: { userId?: string; anonymousId?: string } = {};
-
-    if (session?.user?.id) voterIdentifier.userId = session.user.id;
-    else {
-      const anonymousId = cookieStore.get('anonymous_id')?.value || uuidv4();
-      cookieStore.set('anonymous_id', anonymousId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 60*60*24*365 });
-      voterIdentifier.anonymousId = anonymousId;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return { success: false, error: 'You must be logged in to vote' };
     }
 
-    await db.vote.create({ data: { pollId, optionId, ...voterIdentifier } });
+    await db.vote.create({ data: { pollId, optionId, userId: session.user.id } });
     revalidatePath(`/dashboard/polls/${pollId}`);
     return { success: true };
   } catch (error) {
@@ -126,15 +128,17 @@ export async function getPollById(pollId: string) {
 // Update poll
 export async function updatePoll(pollId: string, formData: FormData) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) return { success: false, error: 'User not authenticated' };
 
+    const dueRaw = formData.get('due_date');
+    const descRaw = formData.get('description');
     const validatedFields = updatePollSchema.safeParse({
       title: formData.get('title'),
-      description: formData.get('description'),
+      description: typeof descRaw === 'string' && descRaw.length > 0 ? descRaw : undefined,
       options: formData.getAll('options'),
       optionIds: formData.getAll('optionIds'),
-      due_date: formData.get('due_date'),
+      due_date: typeof dueRaw === 'string' && dueRaw.length > 0 ? dueRaw : undefined,
     });
 
     if (!validatedFields.success) return { success: false, error: validatedFields.error.flatten().fieldErrors };
@@ -161,14 +165,75 @@ export async function updatePoll(pollId: string, formData: FormData) {
 // Add comment
 export async function addComment(pollId: string, text: string) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) return { error: 'User not authenticated' };
 
-    await db.comment.create({ data: { text, pollId, authorId: session.user.id } });
+    const comment = await db.comment.create({ data: { text, pollId, authorId: session.user.id } });
+    // Notify admins by email
+    try {
+      const admins = await db.user.findMany({ where: { role: 'admin' }, select: { email: true } });
+      if (admins.length > 0) {
+        const poll = await db.poll.findUnique({ where: { id: pollId }, select: { title: true } });
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await Promise.all(
+          admins.map(a =>
+            resend.emails.send({
+              from: 'no-reply@poll-app.local',
+              to: a.email,
+              subject: `New comment on: ${poll?.title || 'a poll'}`,
+              html: `<p>A new comment was added: "${text}"</p><p>View: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/polls/${pollId}">Open poll</a></p>`,
+            })
+          )
+        );
+      }
+    } catch (e) {
+      console.error('Error sending admin notifications:', e);
+    }
     revalidatePath(`/dashboard/polls/${pollId}`);
     return { error: null };
   } catch (error) {
     return { error: 'Failed to add comment' };
+  }
+}
+
+// Get comments for a poll
+export async function getComments(pollId: string) {
+  try {
+    const comments = await db.comment.findMany({
+      where: { pollId },
+      include: { author: { select: { email: true, id: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { comments, error: null };
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return { comments: [], error: 'Failed to fetch comments' };
+  }
+}
+
+// Delete poll
+export async function deletePoll(pollId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return { success: false, error: 'User not authenticated' };
+
+    // Ensure the poll belongs to the user
+    const poll = await db.poll.findUnique({ where: { id: pollId } });
+    if (!poll || poll.authorId !== session.user.id) {
+      return { success: false, error: 'Not authorized to delete this poll' };
+    }
+
+    // Cascade deletes: votes -> options -> poll (votes have FKs to options/poll)
+    await db.vote.deleteMany({ where: { pollId } });
+    await db.option.deleteMany({ where: { pollId } });
+    await db.comment.deleteMany({ where: { pollId } });
+    await db.poll.delete({ where: { id: pollId } });
+
+    revalidatePath('/dashboard/polls');
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting poll:', error);
+    return { success: false, error: 'Failed to delete poll' };
   }
 }
 

@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { addComment } from "@/lib/actions/poll-actions";
 import { toast } from "sonner";
 import { LoadingSpinner } from "../ui/loading-spinner";
+import Link from "next/link";
 
 interface CommentFormProps {
   pollId: string;
@@ -37,7 +38,14 @@ export function CommentForm({ pollId, onCommentAdded }: CommentFormProps) {
   };
 
   if (!user) {
-    return null;
+    return (
+      <div className="border rounded-md p-4 bg-muted/20 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Log in to add a comment.</p>
+        <Link href={`/auth/login?redirect=/polls/${pollId}`}>
+          <Button size="sm">Log in</Button>
+        </Link>
+      </div>
+    );
   }
 
   return (

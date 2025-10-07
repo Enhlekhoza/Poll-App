@@ -43,7 +43,7 @@ export default function PollActions({ poll }: PollActionsProps) {
 
       if (result.success) {
         toast.success('Poll deleted successfully!');
-        router.refresh(); // Refresh the page to update the polls list
+        router.push('/dashboard/polls?refresh=1');
       } else {
         toast.error(result.error || 'Failed to delete poll');
       }

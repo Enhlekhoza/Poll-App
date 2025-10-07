@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { createPoll } from "@/lib/actions/poll-actions"
@@ -57,9 +58,7 @@ export function PollForm() {
       setDescription("")
       setOptions(["", ""])
       setDueDate("")
-      if (result.poll) {
-        router.push(`/dashboard/polls/${result.poll.id}`)
-      }
+      router.push(`/dashboard/polls`)
     }
   }
 
@@ -67,23 +66,25 @@ export function PollForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1">
         <Label htmlFor="title">Poll Title</Label>
-        <Input
+        <Textarea
           id="title"
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Enter poll question"
           disabled={loading}
+          className="min-h-[80px] text-base"
         />
       </div>
 
       <div className="space-y-1">
         <Label htmlFor="description">Description (Optional)</Label>
-        <Input
+        <Textarea
           id="description"
           value={description}
           onChange={e => setDescription(e.target.value)}
           placeholder="Optional description"
           disabled={loading}
+          className="min-h-[100px]"
         />
       </div>
 

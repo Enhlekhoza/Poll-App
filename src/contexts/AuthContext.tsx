@@ -30,57 +30,36 @@ const AuthContext = createContext<AuthContextType>({
   forgotPassword: async () => ({ error: null }),
 });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+function InnerAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const res = await fetch("/api/auth/session");
-        const data = await res.json();
-        console.log("Session data:", data); // Add logging
-        
-        if (data?.user) {
-          setUser(data.user);
-        }
-      } catch (err) {
-        console.error("Failed to load user:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadUser();
-  }, []);
-
+  const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  useEffect(() => {
+    if (status === 'loading') {
+      setLoading(true);
+      return;
+    }
+    setUser(session?.user ? ({
+      id: (session.user as any).id,
+      email: session.user.email as string,
+      name: session.user.name,
+      role: (session.user as any).role,
+    } as User) : null);
+    setLoading(false);
+  }, [session, status]);
+
   const signIn = async (email: string, password: string) => {
-    console.log("AuthContext: signIn called with email:", email);
-    const result = await nextAuthSignIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
-    console.log("AuthContext: nextAuthSignIn result:", result);
+    const result = await nextAuthSignIn("credentials", { redirect: false, email, password });
     if (result?.error) {
-      console.log("AuthContext: signIn returning error:", result.error);
       return { error: result.error };
     }
-    if (result?.ok) {
-      console.log("AuthContext: nextAuthSignIn successful, result.ok is true.");
-    } else {
-      console.log("AuthContext: nextAuthSignIn failed, result.ok is false.");
-    }
-
-    // Check if there's a redirect parameter in the URL
     const redirectTo = searchParams.get('redirect');
     if (redirectTo) {
-      console.log("AuthContext: Redirecting to original path:", decodeURIComponent(redirectTo));
       router.push(decodeURIComponent(redirectTo));
     } else {
-      console.log("AuthContext: Redirecting to dashboard.");
       router.push("/dashboard");
     }
     return { error: null };
@@ -114,18 +93,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    console.log("AuthContext: signOut called.");
     await nextAuthSignOut({ redirect: false });
-    console.log("AuthContext: User signed out.");
     router.replace("/auth/login");
-    console.log("AuthContext: Redirecting to login after signOut.");
-  };    
+  };
 
   return (
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, forgotPassword }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  return (
     <SessionProvider>
-      <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, forgotPassword }}>
-        {children}
-      </AuthContext.Provider>
+      <InnerAuthProvider>{children}</InnerAuthProvider>
     </SessionProvider>
   );
 }

@@ -5,6 +5,7 @@ import { db } from "./prisma";
 import * as bcrypt from "bcryptjs";
 
 export const authOptions = {
+  trustHost: true,
   adapter: PrismaAdapter(db),
   providers: [
     CredentialsProvider({
@@ -35,6 +36,8 @@ export const authOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.name = user.name;
+        token.picture = (user as any).image;
       }
       return token;
     },
@@ -42,6 +45,8 @@ export const authOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        if (token.name) session.user.name = token.name as string;
+        if (token.picture) (session.user as any).image = token.picture as string;
       }
       return session;
     },

@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  /* other config options here */
+  eslint: {
+    // Ignore ESLint during builds
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig;

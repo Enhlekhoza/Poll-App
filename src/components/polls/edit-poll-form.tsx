@@ -4,12 +4,12 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { toast } from "sonner"
-import { Poll } from "@/types/index"
-import { useRouter } from "next/navigation"
-import { updatePoll } from "@/lib/actions/poll-actions"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 import { X, Plus } from "lucide-react"
+import { Poll } from "@/types/index"
+import { updatePoll } from "@/lib/actions/poll-actions"
 
 interface EditPollFormProps {
   poll: Poll
@@ -22,14 +22,21 @@ export function EditPollForm({ poll }: EditPollFormProps) {
   const [options, setOptions] = useState<Poll['options']>(poll.options)
   const [loading, setLoading] = useState(false)
 
-  const addOption = () => setOptions([...options, { id: `new-${Date.now()}`, text: "", _count: { votes: 0 } }])
-  
+  // Add a new option
+  const addOption = () => {
+    setOptions([
+      ...options,
+      { id: `new-${Date.now()}`, text: "", _count: { votes: 0 } },
+    ])
+  }
+
+  // Remove an option, keeping at least 2
   const removeOption = (index: number) => {
-    // Don't allow removing if only 2 options remain
     if (options.length <= 2) return
     setOptions(options.filter((_, i) => i !== index))
   }
-  
+
+  // Update an option text
   const updateOption = (index: number, value: string) => {
     const newOptions = [...options]
     newOptions[index] = { ...newOptions[index], text: value }
@@ -38,25 +45,30 @@ export function EditPollForm({ poll }: EditPollFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validation
     if (!title.trim()) return toast.error("Poll title is required")
     if (options.length < 2) return toast.error("Add at least 2 options")
     if (options.some(opt => !opt.text.trim())) return toast.error("All options must have text")
 
     setLoading(true)
     try {
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
-      options.forEach(option => formData.append("options", option.text));
-      options.forEach(option => formData.append("optionIds", option.id));
+      const formData = new FormData()
+      formData.append("title", title)
+      formData.append("description", description)
+      options.forEach(opt => formData.append("options", opt.text))
+      options.forEach(opt => formData.append("optionIds", opt.id))
 
-      const { success, error } = await updatePoll(poll.id, formData);
+      const { success, error } = await updatePoll(poll.id, formData)
 
-      if (error) throw new Error(error);
+      if (error) {
+        // Safely convert error to string
+        const errorMessage = typeof error === "string" ? error : JSON.stringify(error)
+        throw new Error(errorMessage)
+      }
 
       toast.success("Poll updated successfully!")
-      router.refresh() // Refresh the page to show updated data
-
+      router.refresh() // Refresh page to show updated data
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
     } finally {

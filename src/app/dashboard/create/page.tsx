@@ -1,18 +1,19 @@
-"use client"
+"use client";
 
-import { useForm, useFieldArray } from "react-hook-form"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
-import { X, Plus, Vote, FileText, ListChecks, Calendar, Tag as TagIcon, Upload } from "lucide-react"
-import ProtectedRoute from "@/components/ProtectedRoute"
-import { createPoll } from "@/lib/actions/poll-actions"
+import { useForm, useFieldArray } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { X, Plus, Vote, FileText, ListChecks, Calendar, Tag as TagIcon, Upload, Wand2 } from "lucide-react";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { createPoll } from "@/lib/actions/poll-actions";
+import { useState } from "react";
 
 // Define the schema for the form, ensuring at least two options are provided.
 const pollFormSchema = z.object({
@@ -27,12 +28,14 @@ const pollFormSchema = z.object({
       })
     )
     .min(2, "You must have at least two options."),
-})
+});
 
-type PollFormValues = z.infer<typeof pollFormSchema>
+type PollFormValues = z.infer<typeof pollFormSchema>;
 
 export default function CreatePollPage() {
-  const router = useRouter()
+  const router = useRouter();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
 
   const form = useForm<PollFormValues>({
     resolver: zodResolver(pollFormSchema),
@@ -44,175 +47,197 @@ export default function CreatePollPage() {
       options: [{ value: "" }, { value: "" }],
     },
     mode: "onChange",
-  })
+  });
 
   const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "options",
-  })
+  });
+
+  const handleGenerate = async () => {
+    if (!aiPrompt.trim() || isGenerating) return;
+
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorMessage = data?.error || "AI generation failed";
+        throw new Error(errorMessage);
+      }
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data?.title) form.setValue("title", data.title);
+      if (data?.description) form.setValue("description", data.description);
+      if (Array.isArray(data?.options) && data.options.length > 1) {
+        replace(data.options.map((v: string) => ({ value: v })));
+      }
+      toast.success("AI suggestions applied!");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unknown error occurred.";
+      toast.error(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const onSubmit = async (data: PollFormValues) => {
-    const formData = new FormData()
-    formData.append("title", data.title)
-    if (data.description) {
-      formData.append("description", data.description)
-    }
+    const formData = new FormData();
+    formData.append("title", data.title);
+    if (data.description) formData.append("description", data.description);
     if (data.dueDate) {
       try {
-        const iso = new Date(data.dueDate).toISOString()
-        formData.append("due_date", iso)
-      } catch {}
+        const iso = new Date(data.dueDate).toISOString();
+        formData.append("due_date", iso);
+      } catch {
+        /* ignore invalid date */
+      }
     }
-    if (data.tags) {
-      formData.append("tags", data.tags)
-    }
-    data.options.forEach(option => formData.append("options", option.value))
+    if (data.tags) formData.append("tags", data.tags);
+    data.options.forEach((option) => formData.append("options", option.value.trim()));
 
-    const result = await createPoll(formData)
+    const result = await createPoll(formData);
 
     if (!result.success) {
-      toast.error(result.error)
+      toast.error(result.error ?? "Failed to create poll");
     } else {
-      toast.success("Poll created successfully!")
-      form.reset() // Reset the form to default values
-      router.push(`/dashboard/polls`) // Redirect to the polls list
+      toast.success("Poll created successfully!");
+      form.reset();
+      router.push(`/dashboard/polls`);
     }
-  }
+  };
 
-  const fileInputRef = (typeof document !== 'undefined') ? document.createElement('input') : null
+  // file import handler: removed unused fileInputRef; safe parsing without `any`
   const handleImportFile = async (file: File) => {
     try {
-      const text = await file.text()
-      let title: string | undefined
-      let description: string | undefined
-      let options: string[] | undefined
-      let dueDate: string | undefined
-      let tags: string[] | undefined
+      const text = await file.text();
 
-      if (file.name.endsWith('.json')) {
-        const json = JSON.parse(text)
-        title = json.title || json.question
-        description = json.description || json.desc
-        if (Array.isArray(json.options)) {
-          options = json.options.map((o: any) => String(typeof o === 'object' ? (o.value || o.text || '') : o)).filter(Boolean)
-        }
-        if (json.dueDate || json.due_date) {
-          dueDate = String(json.dueDate || json.due_date)
-        }
-        if (Array.isArray(json.tags)) {
-          tags = json.tags.map((t: any) => String(t)).filter(Boolean)
-        }
-      } else if (file.name.endsWith('.csv')) {
-        // CSV: first row title, second row description (optional), remaining rows options
-        const rows = text.split(/\r?\n/).map(r => r.trim()).filter(r => r.length > 0)
-        if (rows.length > 0) title = rows[0]
-        if (rows.length > 2) {
-          description = rows[1]
-          // allow optional meta line starting with # for due/tags
-          const rest = rows.slice(2)
-          if (rest[0]?.toLowerCase().startsWith('#')) {
-            const meta = rest.shift() as string
-            const dueMatch = meta.match(/due:(\S+)/i)
-            if (dueMatch) dueDate = dueMatch[1]
-            const tagsMatch = meta.match(/tags:([^#]+)/i)
-            if (tagsMatch) tags = tagsMatch[1].split(',').map(s => s.trim()).filter(Boolean)
+      let title: string | undefined;
+      let description: string | undefined;
+      let options: string[] | undefined;
+      let dueDate: string | undefined;
+      let tags: string[] | undefined;
+
+      const safeToStr = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
+
+      if (file.name.endsWith(".json")) {
+        const parsed = JSON.parse(text) as unknown;
+        if (typeof parsed === "object" && parsed !== null) {
+          const p = parsed as Record<string, unknown>;
+          title = safeToStr(p.title ?? p.question);
+          description = safeToStr(p.description ?? p.desc) || undefined;
+          if (Array.isArray(p.options)) {
+            options = p.options
+              .map((o) => (typeof o === "object" && o !== null ? safeToStr((o as any).value ?? (o as any).text) : safeToStr(o)))
+              .filter(Boolean);
           }
-          options = rest
+          if (p.dueDate || p.due_date) dueDate = safeToStr(p.dueDate ?? p.due_date);
+          if (Array.isArray(p.tags)) tags = p.tags.map((t) => safeToStr(t)).filter(Boolean);
+        }
+      } else if (file.name.endsWith(".csv")) {
+        const rows = text.split(/\r?\n/).map((r) => r.trim()).filter((r) => r.length > 0);
+        if (rows.length > 0) title = rows[0];
+        if (rows.length > 2) {
+          description = rows[1];
+          const rest = rows.slice(2);
+          if (rest[0]?.toLowerCase().startsWith("#")) {
+            const meta = rest.shift() as string;
+            const dueMatch = meta.match(/due:(\S+)/i);
+            if (dueMatch) dueDate = dueMatch[1];
+            const tagsMatch = meta.match(/tags:([^#]+)/i);
+            if (tagsMatch) tags = tagsMatch[1].split(",").map((s) => s.trim()).filter(Boolean);
+          }
+          options = rest;
         } else if (rows.length > 1) {
-          options = rows.slice(1)
+          options = rows.slice(1);
         }
       } else {
-        // TXT: first non-empty line title; if a blank line afterward, next lines are options; otherwise lines after title are options
-        const lines = text.split(/\r?\n/)
-        const cleaned = lines.map(l => l.trim())
-        const nonEmptyIdx = cleaned.findIndex(l => l.length > 0)
+        // txt
+        const lines = text.split(/\r?\n/);
+        const cleaned = lines.map((l) => l.trim());
+        const nonEmptyIdx = cleaned.findIndex((l) => l.length > 0);
         if (nonEmptyIdx >= 0) {
-          title = cleaned[nonEmptyIdx]
-          const rest = cleaned.slice(nonEmptyIdx + 1)
-          // support meta lines starting with # e.g. # due:2025-10-07T10:00,tags:alpha,beta
-          if (rest[0]?.startsWith('#')) {
-            const meta = rest.shift() as string
-            const dueMatch = meta.match(/due:(\S+)/i)
-            if (dueMatch) dueDate = dueMatch[1]
-            const tagsMatch = meta.match(/tags:([^#]+)/i)
-            if (tagsMatch) tags = tagsMatch[1].split(',').map(s => s.trim()).filter(Boolean)
+          title = cleaned[nonEmptyIdx];
+          const rest = cleaned.slice(nonEmptyIdx + 1);
+          if (rest[0]?.startsWith("#")) {
+            const meta = rest.shift() as string;
+            const dueMatch = meta.match(/due:(\S+)/i);
+            if (dueMatch) dueDate = dueMatch[1];
+            const tagsMatch = meta.match(/tags:([^#]+)/i);
+            if (tagsMatch) tags = tagsMatch[1].split(",").map((s) => s.trim()).filter(Boolean);
           }
-          const blankIdx = rest.findIndex(l => l.length === 0)
+          const blankIdx = rest.findIndex((l) => l.length === 0);
           if (blankIdx >= 0) {
-            // description between title and blank line (optional)
-            const maybeDesc = rest.slice(0, blankIdx).join(' ').trim()
-            description = maybeDesc.length > 0 ? maybeDesc : undefined
-            options = rest.slice(blankIdx + 1).filter(l => l.length > 0)
+            const maybeDesc = rest.slice(0, blankIdx).join(" ").trim();
+            description = maybeDesc.length > 0 ? maybeDesc : undefined;
+            options = rest.slice(blankIdx + 1).filter((l) => l.length > 0);
           } else {
-            options = rest.filter(l => l.length > 0)
+            options = rest.filter((l) => l.length > 0);
           }
         }
       }
 
-      if (title) form.setValue('title', String(title))
-      if (description) form.setValue('description', String(description))
+      if (title) form.setValue("title", String(title));
+      if (description) form.setValue("description", String(description));
       if (dueDate) {
         try {
-          // normalize to input[type=datetime-local] value (YYYY-MM-DDTHH:mm)
-          const d = new Date(dueDate)
-          const local = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16)
-          form.setValue('dueDate', local)
-        } catch {}
+          const d = new Date(dueDate);
+          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+          form.setValue("dueDate", local);
+        } catch {
+          /* ignore */
+        }
       }
-      if (tags && tags.length > 0) {
-        form.setValue('tags', tags.join(', '))
-      }
+      if (tags && tags.length > 0) form.setValue("tags", tags.join(", "));
       if (options && options.length > 0) {
-        // ensure at least 2
-        const normalized = options.map(v => ({ value: String(v) }))
-        replace(normalized.length >= 2 ? normalized : [...normalized, { value: '' }])
+        const normalized = options.map((v) => ({ value: String(v) }));
+        replace(normalized.length >= 2 ? normalized : [...normalized, { value: "" }]);
       }
-      toast.success('Imported content applied')
-    } catch (e) {
-      toast.error('Failed to import file')
+      toast.success("Imported content applied");
+    } catch (err) {
+      console.error("handleImportFile error:", err);
+      toast.error("Failed to import file");
     }
-  }
+  };
 
-  const handleDownloadTemplate = (type: 'json' | 'csv' | 'txt') => {
-    let filename = `poll-template.${type}`
-    let content = ''
-    if (type === 'json') {
-      content = JSON.stringify({
-        title: "What's your favorite programming language?",
-        description: "Pick the one you use most often.",
-        options: ["JavaScript", "Python", "Java", "Go"]
-      }, null, 2)
-    } else if (type === 'csv') {
-      content = [
-        "What's your favorite programming language?",
-        "Pick the one you use most often.",
-        "JavaScript",
-        "Python",
-        "Java",
-        "Go"
-      ].join('\n')
+  const handleDownloadTemplate = (type: "json" | "csv" | "txt") => {
+    const filename = `poll-template.${type}`;
+    let content = "";
+    if (type === "json") {
+      content = JSON.stringify(
+        {
+          title: "What&apos;s your favorite programming language?",
+          description: "Pick the one you use most often.",
+          options: ["JavaScript", "Python", "Java", "Go"],
+        },
+        null,
+        2
+      );
+    } else if (type === "csv") {
+      content = ["What's your favorite programming language?", "Pick the one you use most often.", "JavaScript", "Python", "Java", "Go"].join("\n");
     } else {
-      content = [
-        "What's your favorite programming language?",
-        "",
-        "Pick the one you use most often.",
-        "",
-        "JavaScript",
-        "Python",
-        "Java",
-        "Go"
-      ].join('\n')
+      content = ["What's your favorite programming language?", "", "Pick the one you use most often.", "", "JavaScript", "Python", "Java", "Go"].join("\n");
     }
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <ProtectedRoute>
@@ -233,51 +258,50 @@ export default function CreatePollPage() {
                 <FileText className="w-6 h-6 text-blue-600" />
                 Poll Details
               </CardTitle>
-              <CardDescription className="text-base">
-                Fill in the information below to create your poll
-              </CardDescription>
+              <CardDescription className="text-base">Fill in the information below to create your poll</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                   {/* AI Assist & Import Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-gray-900">AI Assist & Import</h3>
+                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                      <Wand2 className="w-5 h-5 text-purple-600" />
+                      AI Assist & Import
+                    </h3>
                     <div className="flex flex-col md:flex-row gap-3">
-                      <Input className="flex-1" placeholder="Describe your poll (e.g., Feedback on new feature launch)" onKeyDown={async (e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          const prompt = (e.target as HTMLInputElement).value
-                          if (!prompt) return
-                          const res = await fetch('/api/ai/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) })
-                          const data = await res.json()
-                          if (data?.title) form.setValue('title', data.title)
-                          if (data?.description) form.setValue('description', data.description)
-                          if (Array.isArray(data?.options) && data.options.length > 1) {
-                            replace(data.options.map((v: string) => ({ value: v })))
+                      <Input
+                        className="flex-1"
+                        placeholder="Describe your poll (e.g., Feedback on new feature launch)"
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleGenerate();
                           }
-                          toast[data.error ? 'error' : 'success'](data.error ? 'AI failed to generate' : 'AI suggestions applied')
-                        }
-                      }} />
-                      <Button type="button" className="md:w-auto" onClick={async () => {
-                        const prompt = (document.activeElement as HTMLInputElement)?.value || 'Create a poll'
-                        const res = await fetch('/api/ai/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) })
-                        const data = await res.json()
-                        if (data?.title) form.setValue('title', data.title)
-                        if (data?.description) form.setValue('description', data.description)
-                        if (Array.isArray(data?.options) && data.options.length > 1) {
-                          replace(data.options.map((v: string) => ({ value: v })))
-                        }
-                        toast[data.error ? 'error' : 'success'](data.error ? 'AI failed to generate' : 'AI suggestions applied')
-                      }}>Generate</Button>
+                        }}
+                        disabled={isGenerating}
+                      />
+                      <Button type="button" className="md:w-auto" onClick={handleGenerate} disabled={isGenerating || !aiPrompt.trim()}>
+                        {isGenerating ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                            Generating...
+                          </>
+                        ) : (
+                          "Generate"
+                        )}
+                      </Button>
                     </div>
+
                     <div className="flex items-center gap-3 flex-wrap">
                       <input
                         type="file"
                         accept=".txt,.csv,.json"
                         onChange={(e) => {
-                          const f = e.target.files?.[0]
-                          if (f) handleImportFile(f)
+                          const f = e.target.files?.[0];
+                          if (f) handleImportFile(f);
                         }}
                         className="block w-full md:w-auto text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                       />
@@ -285,16 +309,30 @@ export default function CreatePollPage() {
                         <Upload className="w-4 h-4 mr-2" /> Choose file
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap"></div>
+
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate('json')}>Download JSON template</Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate('csv')}>Download CSV template</Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate('txt')}>Download TXT template</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("json")}>
+                        Download JSON template
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("csv")}>
+                        Download CSV template
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("txt")}>
+                        Download TXT template
+                      </Button>
                     </div>
+
                     <div className="text-xs text-gray-500 space-y-2 bg-gray-50 p-3 rounded-md">
-                      <p><strong>JSON</strong>: {`{"title","description","options":[]}`}</p>
-                      <p><strong>CSV</strong>: first row = title, second = description (optional), others = options; optional meta row starting with # e.g. {`# due:2025-10-07T10:00,tags:alpha,beta`}</p>
-                      <p><strong>TXT</strong>: first line = title; optional meta line starting with #; blank line; optional description; blank line; options</p>
+                      <p>
+                        <strong>JSON</strong>: {`{"title","description","options":[]}`}
+                      </p>
+                      <p>
+                        <strong>CSV</strong>: first row = title, second = description (optional), others = options; optional meta row starting with # e.g.{" "}
+                        {`# due:2025-10-07T10:00,tags:alpha,beta`}
+                      </p>
+                      <p>
+                        <strong>TXT</strong>: first line = title; optional meta line starting with #; blank line; optional description; blank line; options
+                      </p>
                     </div>
                   </div>
 
@@ -311,7 +349,7 @@ export default function CreatePollPage() {
                         <FormItem>
                           <FormControl>
                             <Textarea
-                              placeholder="What's your favorite programming language?"
+                              placeholder={"What\u0027s your favorite programming language?"}
                               className="min-h-[80px] text-lg py-3 px-4 border-2 border-gray-200 focus:border-blue-500 transition-colors"
                               {...field}
                             />
@@ -418,20 +456,10 @@ export default function CreatePollPage() {
                                   <span className="text-sm font-medium text-blue-600">{index + 1}</span>
                                 </div>
                                 <FormControl>
-                                  <Input
-                                    {...field}
-                                    placeholder={`Enter option ${index + 1}`}
-                                    className="flex-1 border-2 border-gray-200 focus:border-blue-500 transition-colors"
-                                  />
+                                  <Input {...field} placeholder={`Enter option ${index + 1}`} className="flex-1 border-2 border-gray-200 focus:border-blue-500 transition-colors" />
                                 </FormControl>
                                 {fields.length > 2 && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => remove(index)}
-                                    className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  >
+                                  <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50">
                                     <X className="h-4 w-4" />
                                   </Button>
                                 )}
@@ -450,14 +478,10 @@ export default function CreatePollPage() {
 
                   {/* Submit Button */}
                   <div className="pt-6 border-t border-gray-200">
-                    <Button
-                      type="submit"
-                      disabled={form.formState.isSubmitting}
-                      className="w-full py-3 text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-                    >
+                    <Button type="submit" disabled={form.formState.isSubmitting} className="w-full py-3 text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl">
                       {form.formState.isSubmitting ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Creating Poll...
                         </div>
                       ) : (
@@ -475,5 +499,5 @@ export default function CreatePollPage() {
         </div>
       </div>
     </ProtectedRoute>
-  )
+  );
 }

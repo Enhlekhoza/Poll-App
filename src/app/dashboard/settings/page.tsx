@@ -9,13 +9,23 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { updateProfile } from "@/lib/actions/user-actions"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
+// Safe User type without image
+interface SafeUser {
+  name?: string | null
+  email: string
+}
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth()
   const router = useRouter()
-  const [name, setName] = useState(user?.name || "")
-  const [image, setImage] = useState(user?.image || "")
+
+  const safeUser: SafeUser = {
+    name: user?.name || "",
+    email: user?.email || "",
+  }
+
+  const [name, setName] = useState(safeUser.name || "")
   const [saving, setSaving] = useState(false)
 
   const handleLogout = async () => {
@@ -29,7 +39,6 @@ export default function SettingsPage() {
     setSaving(true)
     const formData = new FormData()
     if (name) formData.append("name", name)
-    if (image) formData.append("image", image)
     const { success, error } = await updateProfile(formData)
     setSaving(false)
     if (!success) {
@@ -50,25 +59,15 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <form onSubmit={handleSave} className="space-y-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={image} alt={user?.email || "avatar"} />
-                <AvatarFallback>{(user?.email || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="image">Image URL</Label>
-                  <Input id="image" value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://..." />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
               </div>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Email</p>
-              <p className="text-lg font-semibold">{user?.email}</p>
+              <p className="text-lg font-semibold">{safeUser.email}</p>
             </div>
             <div className="flex justify-end">
               <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>

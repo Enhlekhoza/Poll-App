@@ -2,14 +2,19 @@
 
 import { createContext, useContext, ReactNode, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, useSession, SessionProvider } from "next-auth/react";
+import {
+  signIn as nextAuthSignIn,
+  signOut as nextAuthSignOut,
+  useSession,
+  SessionProvider,
+} from "next-auth/react";
 
-// Define a local User type to avoid importing from @prisma/client
+// Local User type
 interface User {
-  id: string;     
+  id: string;
   email: string;
   name?: string | null;
-  role?: string;
+  role?: string | null;
 }
 
 type AuthContextType = {
@@ -35,60 +40,68 @@ function InnerAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // may be null
 
   useEffect(() => {
-    if (status === 'loading') {
+    if (status === "loading") {
       setLoading(true);
       return;
     }
-    setUser(session?.user ? ({
-      id: (session.user as any).id,
-      email: session.user.email as string,
-      name: session.user.name,
-      role: (session.user as any).role,
-    } as User) : null);
+
+    if (session?.user && typeof session.user.email === "string") {
+      const u: User = {
+        id: (session.user as any).id || "",
+        email: session.user.email,
+        name: session.user.name ?? undefined,
+        role: (session.user as any).role ?? undefined,
+      };
+      setUser(u);
+    } else {
+      setUser(null);
+    }
+
     setLoading(false);
   }, [session, status]);
 
   const signIn = async (email: string, password: string) => {
     const result = await nextAuthSignIn("credentials", { redirect: false, email, password });
+
     if (result?.error) {
-      return { error: result.error };
+      return { error: String(result.error) };
     }
-    const redirectTo = searchParams.get('redirect');
+
+    // Use optional chaining to safely handle null searchParams
+    const redirectTo = searchParams?.get("redirect");
     if (redirectTo) {
       router.push(decodeURIComponent(redirectTo));
     } else {
       router.push("/dashboard");
     }
+
     return { error: null };
   };
 
   const signUp = async (email: string, password: string) => {
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
       if (!res.ok) {
         const body = await res.json();
-        return { error: body.error };
+        return { error: body?.error ? String(body.error) : "Registration failed" };
       }
 
       return { error: null };
-    } catch (error) {
-      return { error: 'An unexpected error occurred.' };
+    } catch (err) {
+      console.error("signUp error:", err);
+      return { error: "An unexpected error occurred." };
     }
   };
 
   const forgotPassword = async (email: string) => {
-    // This functionality will need to be re-implemented as it was using Supabase-specific features.
-    // For now, we'll just return an error.
     return { error: "Forgot password functionality is not yet implemented." };
   };
 

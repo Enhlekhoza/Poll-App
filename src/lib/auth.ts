@@ -1,11 +1,20 @@
-import NextAuth from "next-auth";
+import NextAuth, { DefaultSession, NextAuthOptions, SessionStrategy } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { db } from "./prisma";
-import * as bcrypt from "bcryptjs";
+import { db } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
-export const authOptions = {
-  trustHost: true,
+// Extend session type
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      role: string;
+    } & DefaultSession["user"];
+  }
+}
+
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   providers: [
     CredentialsProvider({
@@ -17,10 +26,7 @@ export const authOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
 
-        const user = await db.user.findUnique({
-          where: { email: credentials.email },
-        });
-
+        const user = await db.user.findUnique({ where: { email: credentials.email } });
         if (!user) return null;
 
         const isValid = await bcrypt.compare(credentials.password, user.password);
@@ -30,7 +36,7 @@ export const authOptions = {
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt" as SessionStrategy },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -53,5 +59,4 @@ export const authOptions = {
   },
 };
 
-// Export default for API route
 export default NextAuth(authOptions);

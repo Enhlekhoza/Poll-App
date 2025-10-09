@@ -1,48 +1,51 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
-import { getPollById } from "@/lib/actions/poll-actions"
-import { Poll } from "@/types/index"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { EditPollForm } from "@/components/polls/EditPollForm"
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { getPollById } from "@/lib/actions/poll-actions";
+import { Poll } from "@/types/index";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { EditPollForm } from "@/components/polls/EditPollForm";
 
 export default function EditPollPage() {
-  const { id } = useParams()
-  const pollId = Array.isArray(id) ? id[0] : id
-  const [poll, setPoll] = useState<Poll | null>(null)
-  const [loading, setLoading] = useState(true)
+  const params = useParams();
+  const pollId = params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : null;
+
+  const [poll, setPoll] = useState<Poll | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPoll = async () => {
-      setLoading(true)
+      setLoading(true);
       if (!pollId) {
-        toast.error("Poll ID is missing.")
-        setLoading(false)
+        toast.error("Poll ID is missing.");
+        setLoading(false);
         return;
       }
-      const { poll, error } = await getPollById(pollId)
+
+      const { poll, error } = await getPollById(pollId);
       if (error) {
-        toast.error(error)
-        setPoll(null)
+        toast.error(error);
+        setPoll(null);
       } else {
-        setPoll(poll)
+        setPoll(poll);
       }
-      setLoading(false)
-    }
+      setLoading(false);
+    };
+
     if (pollId) {
-      fetchPoll()
+      fetchPoll();
     }
-  }, [pollId])
+  }, [pollId]);
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingSpinner />
       </div>
-    )
+    );
   }
 
   if (!poll) {
@@ -50,7 +53,7 @@ export default function EditPollPage() {
       <div className="flex min-h-screen items-center justify-center">
         <p>Poll not found.</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -67,5 +70,5 @@ export default function EditPollPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

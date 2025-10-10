@@ -40,8 +40,12 @@ export function EditPollForm({ poll }: EditPollFormProps) {
     e.preventDefault();
     if (!title.trim()) return toast.error('Poll title is required');
     if (options.length < 2) return toast.error('Add at least 2 options');
-    if (options.some((opt) => !opt.text.trim()))
-      return toast.error('All options must have text');
+    
+    // Check if any option is empty and show which one needs text
+    const emptyOptionIndex = options.findIndex(opt => !opt.text.trim());
+    if (emptyOptionIndex !== -1) {
+      return toast.error(`Option ${emptyOptionIndex + 1} must have text`);
+    }
 
     setLoading(true);
     const formData = new FormData();

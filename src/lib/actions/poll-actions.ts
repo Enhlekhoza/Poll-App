@@ -33,18 +33,29 @@ async function getUserId(): Promise<string> {
 }
 
 // ==================== USER POLLS ====================
-export async function getUserPolls(limit = 10, offset = 0) {
+export async function getUserPolls(limit = 10, offset = 0, search?: string) {
   try {
     const userId = await getUserId();
+    
+    const whereClause = {
+      authorId: userId,
+      ...(search ? {
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ]
+      } : {})
+    };
+    
     const [polls, totalPolls] = await Promise.all([
       db.poll.findMany({
-        where: { authorId: userId },
+        where: whereClause,
         include: { options: { include: { _count: { select: { votes: true } } } }, author: true },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
-      db.poll.count({ where: { authorId: userId } }),
+      db.poll.count({ where: whereClause }),
     ]);
     return { polls, hasMore: totalPolls > offset + limit, error: null };
   } catch (error: any) {
@@ -204,6 +215,43 @@ export async function addComment(pollId: string, text: string) {
     return { error: null };
   } catch (error: any) {
     return { error: error.message || 'Failed to add comment' };
+  }
+}
+
+// ==================== GET POLL BY ID ====================
+export async function getPollById(pollId: string) {
+  try {
+    const poll = await db.poll.findUnique({
+      where: { id: pollId },
+      include: {
+        options: {
+          include: {
+            _count: {
+              select: { votes: true }
+            }
+          }
+        },
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true
+          }
+        },
+        _count: {
+          select: { votes: true, comments: true }
+        }
+      }
+    });
+
+    if (!poll) {
+      return { poll: null, error: 'Poll not found' };
+    }
+
+    return { poll, error: null };
+  } catch (error: any) {
+    return { poll: null, error: error.message || 'Failed to fetch poll' };
   }
 }
 

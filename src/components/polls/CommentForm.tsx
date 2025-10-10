@@ -41,7 +41,7 @@ export function CommentForm({ pollId, onCommentAdded }: CommentFormProps) {
     return (
       <div className="border rounded-md p-4 bg-muted/20 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Log in to add a comment.</p>
-        <Link href={`/auth/login?redirect=/polls/${pollId}`}>
+        <Link href={`/auth/login?redirect=/dashboard/polls/${pollId}`}>
           <Button size="sm">Log in</Button>
         </Link>
       </div>

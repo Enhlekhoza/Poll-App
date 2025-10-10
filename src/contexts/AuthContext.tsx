@@ -75,7 +75,7 @@ function InnerAuthProvider({ children }: { children: ReactNode }) {
     if (redirectTo) {
       router.push(decodeURIComponent(redirectTo));
     } else {
-      router.push("/dashboard");
+      router.push("/dashboard/polls");
     }
 
     return { error: null };

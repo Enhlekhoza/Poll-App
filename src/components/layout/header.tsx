@@ -15,13 +15,13 @@ export function Header() {
         </Link>
         
         <nav className="flex items-center space-x-4">
-          <Link href="/polls" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link href="/dashboard/polls" className="text-sm font-medium hover:text-primary transition-colors">
             Polls
           </Link>
           
           {user ? (
             <>
-              <Link href="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+              <Link href="/dashboard/polls" className="text-sm font-medium hover:text-primary transition-colors">
                 Dashboard
               </Link>
               <Link href="/polls/create" className="text-sm font-medium hover:text-primary transition-colors">

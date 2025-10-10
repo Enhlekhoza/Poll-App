@@ -26,6 +26,7 @@ import {
   TrendingUp,
   Bell,
   Search,
+  X,
 } from 'lucide-react';
 
 const navigation = [
@@ -40,6 +41,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -150,8 +153,40 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <input
                     type="text"
                     placeholder="Search polls..."
-                    className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchQuery.trim()) {
+                        router.push(`/dashboard/polls?search=${encodeURIComponent(searchQuery.trim())}`);
+                        setShowSearchResults(true);
+                      }
+                    }}
+                    className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
+                  {searchQuery && (
+                    <button 
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setShowSearchResults(false);
+                      }}
+                    >
+                      <X className="h-4 w-4 text-slate-400 hover:text-slate-600" />
+                    </button>
+                  )}
+                  {searchQuery && (
+                    <button 
+                      className="absolute inset-y-0 right-8 pr-3 flex items-center"
+                      onClick={() => {
+                        if (searchQuery.trim()) {
+                          router.push(`/dashboard/polls?search=${encodeURIComponent(searchQuery.trim())}`);
+                          setShowSearchResults(true);
+                        }
+                      }}
+                    >
+                      <Search className="h-4 w-4 text-blue-500 hover:text-blue-700" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

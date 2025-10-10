@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (session) {
-    router.replace("/dashboard");
+    router.replace("/dashboard/polls");
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <p className="text-center">Redirecting to dashboard...</p>
@@ -42,7 +42,7 @@ export default function LoginPage() {
     if (result?.error) {
       setError(result.error);
     } else {
-      router.replace("/dashboard");
+      router.replace("/dashboard/polls");
     }
   };
 

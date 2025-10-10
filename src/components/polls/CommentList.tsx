@@ -23,20 +23,20 @@ export function CommentList({ pollId, refreshComments }: CommentListProps) {
   const [loading, setLoading] = useState(true)
 
   const fetchComments = async () => {
-    setLoading(true)
     try {
-      const res = await fetch(`/api/polls/${pollId}/comments`)
-      const data = await res.json()
-      if (res.ok) {
-        setComments(data.comments || [])
-      } else {
-        toast.error(data.error || "Failed to load comments")
+      setLoading(true);
+      const response = await fetch(`/api/polls/${pollId}/comments`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
       }
-    } catch (err) {
-      console.error(err)
-      toast.error("Failed to load comments")
+      const data = await response.json();
+      setComments(data.comments || []);
+    } catch (error) {
+      toast.error('Failed to load comments');
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false)
   }
 
   useEffect(() => {

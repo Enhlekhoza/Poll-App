@@ -5,6 +5,7 @@ import { getPollById, votePoll } from "@/lib/actions/poll-actions"
 import { Poll } from "@/types/index"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner"
 import { PollResultsChart } from "@/components/polls/PollResultsChart"
 import { useAuth } from "@/contexts/AuthContext"
@@ -25,6 +26,9 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
   const [voting, setVoting] = useState(false)
   const [userVoted, setUserVoted] = useState(false)
   const [refreshComments, setRefreshComments] = useState(false)
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summary, setSummary] = useState<{ summary: string; nextActions: string[] } | null>(null);
+  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
   const { user } = useAuth()
 
   const fetchPoll = async () => {
@@ -73,6 +77,28 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
       fetchPoll(); 
     }
     setVoting(false);
+  };
+
+  const handleSummarize = async () => {
+    setIsSummarizing(true);
+    try {
+      const res = await fetch('/api/ai/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pollId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to fetch summary");
+      }
+      setSummary(data);
+      setShowSummaryDialog(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unknown error occurred.";
+      toast.error(message);
+    } finally {
+      setIsSummarizing(false);
+    }
   };
 
   const handleCommentAdded = () => {
@@ -150,9 +176,41 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
               </Link>
             )}
             <SharePoll pollId={poll.id} />
+            {isDashboardView && user?.id === poll.author?.id && (
+              <Button size="sm" onClick={handleSummarize} disabled={isSummarizing}>
+                {isSummarizing ? <LoadingSpinner className="mr-2" /> : "Summarize with AI"}
+              </Button>
+            )}
           </div>
         </CardFooter>
       </Card>
+
+      <Dialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>AI Poll Summary</DialogTitle>
+            <DialogDescription>
+              Here's a summary of the poll results and some suggested next actions.
+            </DialogDescription>
+          </DialogHeader>
+          {summary && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold">Summary</h4>
+                <p>{summary.summary}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold">Next Actions</h4>
+                <ul className="list-disc pl-5">
+                  {summary.nextActions.map((action, index) => (
+                    <li key={index}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="max-w-2xl mx-auto mt-8">
         <h3 className="text-xl font-semibold mb-4">Comments</h3>

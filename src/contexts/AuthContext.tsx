@@ -35,7 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   forgotPassword: async () => ({ error: null }),
 });
 
-function InnerAuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { data: session, status } = useSession();
@@ -114,14 +114,6 @@ function InnerAuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, forgotPassword }}>
       {children}
     </AuthContext.Provider>
-  );
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  return (
-    <SessionProvider>
-      <InnerAuthProvider>{children}</InnerAuthProvider>
-    </SessionProvider>
   );
 }
 

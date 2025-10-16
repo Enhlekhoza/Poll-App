@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
+  id        String         @id @default(cuid())
+  email     String         @unique
   password  String
   name      String?
   image     String?
-  role      String    @default("user")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  role      String         @default("user")
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   comments  Comment[]
   polls     Poll[]
   votes     Vote[]
+  templates PollTemplate[]
 }
 
 model Poll {
@@ -70,4 +71,16 @@ model Comment {
   updatedAt DateTime @updatedAt
   author    User     @relation(fields: [authorId], references: [id])
   poll      Poll     @relation(fields: [pollId], references: [id])
+}
+
+model PollTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  authorId    String
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  options     String   // Stored as JSON string of option texts
+  author      User     @relation(fields: [authorId], references: [id])
 }

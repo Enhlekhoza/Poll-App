@@ -32,6 +32,7 @@ import {
 const navigation = [
   { name: 'Create Poll', href: '/dashboard/create', icon: Plus },
   { name: 'My Polls', href: '/dashboard/polls', icon: BarChart3 },
+  { name: 'Templates', href: '/dashboard/templates', icon: FileText },
   { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];

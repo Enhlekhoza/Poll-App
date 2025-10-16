@@ -53,6 +53,11 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
 
   const handleVote = async (optionId: string) => {
     if (!poll) return;
+    
+    if (!user) {
+      toast.error("You must be logged in to vote");
+      return;
+    }
 
     setVoting(true);
 
@@ -159,6 +164,13 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
               <PollResultsChart options={poll.options} />
             )}
             <p className="text-sm text-gray-500">Total Votes: {totalVotes}</p>
+          </div>
+
+          {/* Comments section */}
+          <div className="space-y-4 mt-8 pt-4 border-t">
+            <h3 className="text-xl font-semibold">Comments</h3>
+            <CommentForm pollId={pollId} onCommentAdded={handleCommentAdded} />
+            <CommentList pollId={pollId} refresh={refreshComments} />
           </div>
         </CardContent>
         <CardFooter className="flex justify-between items-center">

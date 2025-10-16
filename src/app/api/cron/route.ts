@@ -2,6 +2,11 @@ import { db } from '@/lib/prisma';
 import { sendPollClosingEmail } from '@/lib/email/resend';
 import { NextResponse } from 'next/server';
 
+// Required for static export
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const twentyFourHoursFromNow = new Date();

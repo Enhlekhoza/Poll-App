@@ -70,13 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: String(result.error) };
     }
 
-    // Use optional chaining to safely handle null searchParams
-    const redirectTo = searchParams?.get("redirect");
-    if (redirectTo) {
-      router.push(decodeURIComponent(redirectTo));
-    } else {
-      router.push("/dashboard/polls");
-    }
+    // Always redirect to the main polls page after sign-in
+    router.push("/dashboard/polls");
 
     return { error: null };
   };
@@ -94,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: body?.error ? String(body.error) : "Registration failed" };
       }
 
-      return { error: null };
+      // Automatically sign in after successful registration
+      return await signIn(email, password);
     } catch (err) {
       console.error("signUp error:", err);
       return { error: "An unexpected error occurred." };

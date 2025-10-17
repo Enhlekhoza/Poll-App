@@ -14,8 +14,7 @@ import { X, Plus, Vote, FileText, ListChecks, Calendar, Tag as TagIcon, Upload, 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { createPoll } from "@/lib/actions/poll-actions";
 import { useState, useEffect } from "react";
-import { useTemplates } from "@/hooks/useTemplates";
-import TemplateSelector from "@/components/polls/TemplateSelector";
+
 
 // Define the schema for the form, ensuring at least two options are provided.
 const pollFormSchema = z.object({
@@ -265,20 +264,7 @@ export default function CreatePollPage() {
             <CardContent className="space-y-8">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                  {/* Templates Section */}
-                  <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                      Poll Templates
-                    </h3>
-                    <TemplateSelector onSelect={(template) => {
-                      form.setValue("title", template.title);
-                      if (template.description) form.setValue("description", template.description);
-                      if (template.options && template.options.length >= 2) {
-                        replace(template.options.map(opt => ({ value: opt })));
-                      }
-                    }} />
-                  </div>
+
 
                   {/* AI Assist & Import Section */}
                   <div className="space-y-4 p-4 border rounded-lg bg-gray-50">

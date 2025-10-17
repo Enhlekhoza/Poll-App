@@ -10,7 +10,7 @@ datasource db {
 model User {
   id        String         @id @default(cuid())
   email     String         @unique
-  password  String
+  password  String?
   name      String?
   image     String?
   role      String         @default("user")
@@ -19,7 +19,7 @@ model User {
   comments  Comment[]
   polls     Poll[]
   votes     Vote[]
-  templates PollTemplate[]
+
 }
 
 model Poll {
@@ -73,14 +73,4 @@ model Comment {
   poll      Poll     @relation(fields: [pollId], references: [id])
 }
 
-model PollTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  authorId    String
-  isPublic    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  options     String   // Stored as JSON string of option texts
-  author      User     @relation(fields: [authorId], references: [id])
-}
+

@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -22,7 +22,6 @@ import {
   Menu,
   LogOut,
   User,
-  PieChart,
   TrendingUp,
   Bell,
   Search,
@@ -32,7 +31,6 @@ import {
 const navigation = [
   { name: 'Create Poll', href: '/dashboard/create', icon: Plus },
   { name: 'My Polls', href: '/dashboard/polls', icon: BarChart3 },
-  { name: 'Templates', href: '/dashboard/templates', icon: FileText },
   { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
@@ -41,9 +39,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // Initialize search query from URL params
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+      setShowSearchResults(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user) {
@@ -54,6 +62,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
+  };
+
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      // Navigate to polls page with search query
+      router.push(`/dashboard/polls?search=${encodeURIComponent(query.trim())}`);
+      setShowSearchResults(true);
+    } else {
+      // If search is cleared, navigate to polls page without search
+      router.push('/dashboard/polls');
+      setShowSearchResults(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setShowSearchResults(false);
+    // If we're on the polls page with search, navigate back without search
+    if (pathname === '/dashboard/polls' && searchParams.get('search')) {
+      router.push('/dashboard/polls');
+    }
   };
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
@@ -145,7 +174,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </SheetTrigger>
               </Sheet>
 
-              {/* Search */}
+              {/* Search - This now uses Algolia */}
               <div className="hidden md:block ml-4">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -157,9 +186,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && searchQuery.trim()) {
-                        router.push(`/dashboard/polls?search=${encodeURIComponent(searchQuery.trim())}`);
-                        setShowSearchResults(true);
+                      if (e.key === 'Enter') {
+                        handleSearch(searchQuery);
                       }
                     }}
                     className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -167,10 +195,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   {searchQuery && (
                     <button 
                       className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setShowSearchResults(false);
-                      }}
+                      onClick={clearSearch}
                     >
                       <X className="h-4 w-4 text-slate-400 hover:text-slate-600" />
                     </button>
@@ -178,12 +203,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   {searchQuery && (
                     <button 
                       className="absolute inset-y-0 right-8 pr-3 flex items-center"
-                      onClick={() => {
-                        if (searchQuery.trim()) {
-                          router.push(`/dashboard/polls?search=${encodeURIComponent(searchQuery.trim())}`);
-                          setShowSearchResults(true);
-                        }
-                      }}
+                      onClick={() => handleSearch(searchQuery)}
                     >
                       <Search className="h-4 w-4 text-blue-500 hover:text-blue-700" />
                     </button>

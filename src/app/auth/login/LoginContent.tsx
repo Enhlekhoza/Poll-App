@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginContent() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,20 +33,12 @@ export default function LoginContent() {
     setError(null);
     setLoading(true);
 
-    const redirectUrl = "/dashboard/polls";
-
-    const result = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+    const { error: signInError } = await signIn(email, password);
 
     setLoading(false);
 
-    if (result?.error) {
-      setError(result.error);
-    } else {
-      router.replace(redirectUrl);
+    if (signInError) {
+      setError(signInError);
     }
   };
 
@@ -97,6 +91,25 @@ export default function LoginContent() {
             {loading ? "Signing in..." : "Login"}
           </Button>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => signIn("google", { callbackUrl: "/dashboard/polls" })}
+        >
+          Sign in with Google
+        </Button>
 
         <p className="mt-6 text-center text-gray-600">
           Don't have an account?{" "}

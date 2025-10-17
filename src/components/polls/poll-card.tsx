@@ -12,7 +12,7 @@ interface PollCardProps {
 
 export function PollCard({ poll, showActions = true }: PollCardProps) {
   // Calculate total votes
-  const totalVotes = poll.options.reduce((sum, option) => sum + option._count.votes, 0)
+  const totalVotes = poll.options.reduce((sum, option) => sum + (option._count?.votes || 0), 0)
   
   return (
     <Card className="h-full flex flex-col">

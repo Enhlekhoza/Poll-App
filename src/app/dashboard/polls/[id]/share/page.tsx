@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
@@ -9,12 +9,12 @@ import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { Input } from '@/components/ui/input'
 import { Copy } from 'lucide-react'
-import { getPollById } from '@/lib/actions/poll-actions' // Import the action
+import { getPollById } from '@/lib/actions/poll-actions'
 
 interface Poll {
-  id: string;
-  title: string;
-  description: string | null;
+  id: string
+  title: string
+  description: string | null
 }
 
 export default function SharePollPage() {
@@ -26,7 +26,7 @@ export default function SharePollPage() {
   useEffect(() => {
     const fetchPollData = async () => {
       setLoading(true)
-      const { poll: fetchedPoll, error } = await getPollById(id) // Use the server action
+      const { poll: fetchedPoll, error } = await getPollById(id)
       
       if (error || !fetchedPoll) {
         toast.error('Failed to load poll: ' + (error || 'Poll not found'))
@@ -37,9 +37,9 @@ export default function SharePollPage() {
       setPoll(fetchedPoll)
       setLoading(false)
       
-      // Create the poll URL
+      // Correct dashboard URL
       const baseUrl = window.location.origin
-      setPollUrl(`${baseUrl}/polls/${id}`)
+      setPollUrl(`${baseUrl}/dashboard/polls/${id}`)
     }
     
     fetchPollData()
@@ -49,7 +49,7 @@ export default function SharePollPage() {
     try {
       await navigator.clipboard.writeText(pollUrl)
       toast.success('Link copied to clipboard!')
-    } catch (err) {
+    } catch {
       toast.error('Failed to copy link')
     }
   }
@@ -61,7 +61,7 @@ export default function SharePollPage() {
     const svgData = new XMLSerializer().serializeToString(svg)
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-    const img = new Image();
+    const img = new Image()
     
     img.onload = () => {
       canvas.width = img.width
@@ -69,7 +69,6 @@ export default function SharePollPage() {
       ctx?.drawImage(img, 0, 0)
       const pngFile = canvas.toDataURL('image/png')
       
-      // Download the PNG
       const downloadLink = document.createElement('a')
       downloadLink.download = `poll-${id}-qrcode.png`
       downloadLink.href = pngFile
@@ -92,7 +91,7 @@ export default function SharePollPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <h1 className="text-2xl font-bold">Poll not found</h1>
         <Button asChild>
-          <Link href="/polls">Back to Polls</Link>
+          <Link href="/dashboard/polls">Back to Polls</Link>
         </Button>
       </div>
     )
@@ -144,7 +143,7 @@ export default function SharePollPage() {
         
         <CardFooter>
           <Button asChild className="w-full">
-            <Link href={`/polls/${id}`}>Back to Poll</Link>
+            <Link href={`/dashboard/polls/${id}`}>Back to Poll</Link>
           </Button>
         </CardFooter>
       </Card>

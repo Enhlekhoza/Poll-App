@@ -3,12 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const pollId = params.id;
+    const { id: pollId } = await context.params;
 
-    // Fetch comments for the poll
     const comments = await db.comment.findMany({
       where: { pollId },
       include: {
@@ -36,10 +35,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const pollId = params.id;
+    const { id: pollId } = await context.params;
     const { content, userId } = await request.json();
 
     if (!content || !userId) {

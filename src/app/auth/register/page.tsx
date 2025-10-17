@@ -63,8 +63,7 @@ export default function RegisterPage() {
     if (error) {
       toast.error(error)
     } else {
-      toast.success("Registration successful! Please log in.")
-      router.push("/auth/login")
+      // The redirect is now handled by the signIn function in AuthContext
     }
   }
 

@@ -36,27 +36,35 @@ async function getUserId(): Promise<string> {
 export async function getUserPolls(limit = 10, offset = 0, search?: string) {
   try {
     const userId = await getUserId();
-    
-    const whereClause = {
-      authorId: userId,
-      ...(search ? {
-        OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { options: { some: { text: { contains: search, mode: 'insensitive' } } } }
-        ]
-      } : {})
-    };
-    
+    const term = (search || '').trim();
+    // For cross-db reliability (e.g., SQLite), perform case-insensitive filtering in memory when a term is provided
+    if (term) {
+      const all = await db.poll.findMany({
+        where: { authorId: userId },
+        include: { options: { include: { _count: { select: { votes: true } } } }, author: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      const lc = term.toLowerCase();
+      const filtered = all.filter(p => {
+        const inTitle = p.title?.toLowerCase().includes(lc);
+        const inDesc = (p.description || '').toLowerCase().includes(lc);
+        const inOptions = p.options?.some(o => o.text?.toLowerCase().includes(lc));
+        return inTitle || inDesc || inOptions;
+      });
+      const sliced = filtered.slice(offset, offset + limit);
+      return { polls: sliced as any, hasMore: filtered.length > offset + limit, error: null };
+    }
+
+    // No search term: use DB pagination directly
     const [polls, totalPolls] = await Promise.all([
       db.poll.findMany({
-        where: whereClause,
+        where: { authorId: userId },
         include: { options: { include: { _count: { select: { votes: true } } } }, author: true },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
       }),
-      db.poll.count({ where: whereClause }),
+      db.poll.count({ where: { authorId: userId } }),
     ]);
     return { polls, hasMore: totalPolls > offset + limit, error: null };
   } catch (error: any) {

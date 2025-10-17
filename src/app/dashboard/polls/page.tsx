@@ -9,23 +9,17 @@ import { Poll } from "@/types/index";
 import { getUserPolls } from "@/lib/actions/poll-actions";
 import { useSearchParams } from "next/navigation";
 
-// Algolia search hook (you'll need to set up your Algolia client)
-import { useAlgoliaSearch } from "@/hooks/useAlgoliaSearch";
-
 export default function DashboardPollsPage() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
 
-  // Use Algolia for search when there's a query, otherwise use regular fetch
-  const { searchResults, searching } = useAlgoliaSearch(searchQuery);
-
   // Fetch all polls when no search query
-  const fetchPolls = async () => {
+  const fetchPolls = async (q?: string) => {
     setLoading(true);
     try {
-      const { polls: userPolls = [] } = await getUserPolls();
+      const { polls: userPolls = [] } = await getUserPolls(50, 0, q);
       setPolls(userPolls);
     } catch (err) {
       console.error(err);
@@ -36,14 +30,13 @@ export default function DashboardPollsPage() {
   };
 
   useEffect(() => {
-    if (!searchQuery) {
-      fetchPolls();
-    }
+    // Fetch polls whenever search query changes (DB-based search)
+    fetchPolls(searchQuery || undefined);
   }, [searchQuery]);
 
   // Determine which polls to display
-  const displayPolls = searchQuery ? searchResults : polls;
-  const isLoading = searchQuery ? searching : loading;
+  const displayPolls = polls;
+  const isLoading = loading;
 
   return (
     <div className="container mx-auto py-8">

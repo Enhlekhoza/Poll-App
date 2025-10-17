@@ -42,7 +42,8 @@ export async function getUserPolls(limit = 10, offset = 0, search?: string) {
       ...(search ? {
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
+          { description: { contains: search, mode: 'insensitive' } },
+          { options: { some: { text: { contains: search, mode: 'insensitive' } } } }
         ]
       } : {})
     };

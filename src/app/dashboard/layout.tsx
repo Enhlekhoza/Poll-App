@@ -174,7 +174,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </SheetTrigger>
               </Sheet>
 
-              {/* Search - This now uses Algolia */}
               <div className="hidden md:block ml-4">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -198,14 +197,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       onClick={clearSearch}
                     >
                       <X className="h-4 w-4 text-slate-400 hover:text-slate-600" />
-                    </button>
-                  )}
-                  {searchQuery && (
-                    <button 
-                      className="absolute inset-y-0 right-8 pr-3 flex items-center"
-                      onClick={() => handleSearch(searchQuery)}
-                    >
-                      <Search className="h-4 w-4 text-blue-500 hover:text-blue-700" />
                     </button>
                   )}
                 </div>

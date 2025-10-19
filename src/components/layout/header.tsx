@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
+import { NotificationBell } from './NotificationBell'
 
 export function Header() {
   const { user, signOut } = useAuth()
@@ -21,6 +22,7 @@ export function Header() {
           
           {user ? (
             <>
+              <NotificationBell />
               <Link href="/dashboard/polls" className="text-sm font-medium hover:text-primary transition-colors">
                 Dashboard
               </Link>

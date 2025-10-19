@@ -18,6 +18,9 @@ export type Poll = {
   options: PollOption[];
   author: PollAuthor;
   createdAt: Date;
+  dueDate?: Date | null;
+  visibility: string;
+  tags?: { tag: { name: string } }[];
 };
 
 export type Comment = {

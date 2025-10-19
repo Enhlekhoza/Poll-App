@@ -5,15 +5,26 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 import { createPoll } from "@/lib/actions/poll-actions"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 export function PollForm() {
+  const { data: session } = useSession()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [options, setOptions] = useState<string[]>(["", ""])
   const [dueDate, setDueDate] = useState("")
+  const [visibility, setVisibility] = useState("PUBLIC")
+  const [tags, setTags] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -45,6 +56,10 @@ export function PollForm() {
     if (dueDate) {
       formData.append("due_date", new Date(dueDate).toISOString())
     }
+    formData.append("visibility", visibility)
+    if (tags) {
+      formData.append("tags", tags)
+    }
 
     const result = await createPoll(formData)
     setLoading(false)
@@ -58,6 +73,8 @@ export function PollForm() {
       setDescription("")
       setOptions(["", ""])
       setDueDate("")
+      setVisibility("PUBLIC")
+      setTags("")
       router.push(`/dashboard/polls`)
     }
   }
@@ -113,6 +130,39 @@ export function PollForm() {
         <Button type="button" onClick={addOption} disabled={loading}>
           Add Option
         </Button>
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="tags">Tags (comma-separated)</Label>
+        <Input
+          id="tags"
+          value={tags}
+          onChange={e => setTags(e.target.value)}
+          placeholder="e.g. technology, programming, lifestyle"
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="visibility">Visibility</Label>
+        <Select value={visibility} onValueChange={setVisibility} disabled={loading}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select visibility" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="PUBLIC">Public</SelectItem>
+            {session?.user?.role &&
+              ["PREMIUM_CREATOR", "ADMIN"].includes(session.user.role) && (
+                <SelectItem value="UNLISTED">Unlisted</SelectItem>
+              )}
+          </SelectContent>
+        </Select>
+        {session?.user?.role &&
+          !["PREMIUM_CREATOR", "ADMIN"].includes(session.user.role) && (
+            <p className="text-xs text-gray-500">
+              Upgrade to a Premium account to create unlisted polls.
+            </p>
+          )}
       </div>
 
       <div className="space-y-1">

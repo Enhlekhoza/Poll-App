@@ -1,117 +1,141 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { PlusCircle, ListChecks, Settings, BarChart2, Users, ShieldCheck } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { PlusCircle, ListChecks, Activity, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { PollCard } from "@/components/polls/poll-card" // Assuming a PollCard component exists
 
-export default function DashboardHomePage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
+// Define a type for the poll data for better type safety
+interface Poll {
+  id: string;
+  title: string;
+  _count: {
+    votes: number;
+    comments: number;
+  };
+}
+
+const PollsFeed = ({ title, fetchUrl }: { title: string, fetchUrl: string }) => {
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const fetchPolls = async () => {
+      setIsLoading(true);
+      try {
+        const url = searchTerm ? `${fetchUrl}&tag=${encodeURIComponent(searchTerm)}` : fetchUrl;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          setPolls(data);
+        }
+      } catch (error) {
+        console.error(`Failed to fetch polls from ${fetchUrl}:`, error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    const debounceFetch = setTimeout(() => {
+      fetchPolls();
+    }, 500); // Debounce to avoid fetching on every keystroke
+
+    return () => clearTimeout(debounceFetch);
+  }, [fetchUrl, searchTerm]);
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-4xl font-bold mb-4">
-        Welcome, {user?.name || user?.email || "User"}!
-        {isAdmin && <Badge className="ml-2 bg-blue-600">Admin</Badge>}
-      </h1>
-      <p className="text-lg text-gray-600 mb-8">
-        {isAdmin 
-          ? "Manage users, view analytics, and oversee all polls." 
-          : "Vote on polls, leave comments, and track your participation."}
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Admin-specific cards */}
-        {isAdmin && (
-          <>
-            <Card className="hover:shadow-lg transition-shadow duration-300 border-blue-200">
-              <CardHeader>
-                <ShieldCheck className="h-8 w-8 text-blue-600 mb-2" />
-                <CardTitle>Admin Dashboard</CardTitle>
-                <CardDescription>Access administrative controls and user management.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/dashboard/admin">
-                  <Button className="w-full" variant="default">Admin Panel</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow duration-300 border-blue-200">
-              <CardHeader>
-                <Users className="h-8 w-8 text-blue-600 mb-2" />
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>View and manage user accounts.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/dashboard/admin/users">
-                  <Button className="w-full" variant="default">Manage Users</Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          {title === "Discover Public Polls" ? <ListChecks className="mr-2" /> : <Activity className="mr-2" />}
+          {title}
+        </CardTitle>
+        <CardDescription>
+          {title === "Discover Public Polls"
+            ? "Explore polls from the community."
+            : "Polls you've recently voted on or commented on."}
+        </CardDescription>
+        {title === "Discover Public Polls" && (
+          <div className="pt-2">
+            <Input 
+              placeholder="Filter by tag..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         )}
-
-        {/* Cards for all users */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <ListChecks className="h-8 w-8 text-green-600 mb-2" />
-            <CardTitle>Polls</CardTitle>
-            <CardDescription>
-              {isAdmin ? "View and manage all polls" : "Vote and participate in polls"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/dashboard/polls">
-              <Button className="w-full">View Polls</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Poll creation for admin users */}
-        {isAdmin && (
-          <Card className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader>
-              <PlusCircle className="h-8 w-8 text-blue-600 mb-2" />
-              <CardTitle>Create New Poll</CardTitle>
-              <CardDescription>Start a new poll to gather opinions.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href="/dashboard/create">
-                <Button className="w-full">Create Poll</Button>
-              </Link>
-            </CardContent>
-          </Card>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-24">
+            <Loader2 className="animate-spin h-8 w-8 text-gray-500" />
+          </div>
+        ) : polls.length > 0 ? (
+          <div className="space-y-4">
+            {polls.map((poll) => (
+              <PollCard key={poll.id} poll={poll} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-gray-500">No polls found.</div>
         )}
+      </CardContent>
+    </Card>
+  );
+};
 
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <BarChart2 className="h-8 w-8 text-purple-600 mb-2" />
-            <CardTitle>Analytics</CardTitle>
-            <CardDescription>See detailed insights for polls.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/dashboard/analytics">
-              <Button className="w-full" variant="outline">Go to Analytics</Button>
-            </Link>
-          </CardContent>
-        </Card>
+export default function DashboardHomePage() {
+  const { user, refreshUser } = useAuth();
+  const router = useRouter();
 
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <Settings className="h-8 w-8 text-gray-600 mb-2" />
-            <CardTitle>Settings</CardTitle>
-            <CardDescription>Adjust your account and application settings.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/dashboard/settings">
-              <Button className="w-full" variant="outline">Go to Settings</Button>
-            </Link>
-          </CardContent>
-        </Card>
+  const handleCreatePollClick = async () => {
+    if (user?.role === 'USER') {
+      try {
+        const response = await fetch('/api/user/promote', { method: 'POST' });
+        if (response.ok) {
+          await refreshUser(); // Refresh user context to get the new role
+        } else {
+          console.error("Failed to upgrade user role");
+          // Handle error (e.g., show a toast notification)
+          return;
+        }
+      } catch (error) {
+        console.error("An error occurred while upgrading user role:", error);
+        return;
+      }
+    }
+    router.push('/dashboard/create');
+  };
+
+  return (
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-4xl font-bold">
+            Welcome, {user?.name || user?.email || "User"}!
+          </h1>
+          <p className="text-lg text-gray-600">
+            Discover polls, cast your vote, or create your own.
+          </p>
+        </div>
+        <Button size="lg" onClick={handleCreatePollClick}>
+          <PlusCircle className="mr-2" /> Create a Poll
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <PollsFeed title="Discover Public Polls" fetchUrl="/api/polls?public=true" />
+        </div>
+        <div className="lg:col-span-1 space-y-8">
+          <PollsFeed title="My Activity" fetchUrl="/api/dashboard/my-activity" />
+        </div>
       </div>
     </div>
   )

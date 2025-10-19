@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { Session } from 'next-auth'
 
 type AIParsed = {
   title?: string
@@ -30,6 +33,13 @@ function safeParseAIContent(content: string): AIParsed {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = (await getServerSession(authOptions)) as Session | null
+    const userRole = session?.user?.role
+    
+    if (userRole !== 'PREMIUM_CREATOR' && userRole !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = (await req.json()) as { prompt?: string; fileText?: string } | unknown
     const prompt = typeof body === 'object' && body !== null && 'prompt' in body ? (body as any).prompt : undefined
     const fileText = typeof body === 'object' && body !== null && 'fileText' in body ? (body as any).fileText : undefined

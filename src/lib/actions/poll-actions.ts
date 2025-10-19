@@ -15,6 +15,7 @@ const createPollSchema = z.object({
   description: z.string().optional(),
   options: z.array(z.string().min(1)).min(2),
   due_date: z.string().optional(),
+  tags: z.string().optional(),
 });
 
 const updatePollSchema = z.object({
@@ -23,6 +24,7 @@ const updatePollSchema = z.object({
   options: z.array(z.string().min(1)).min(2),
   optionIds: z.array(z.string().cuid().optional()).optional(),
   due_date: z.string().optional(),
+  tags: z.string().optional(),
 });
 
 // ==================== HELPERS ====================
@@ -75,15 +77,37 @@ export async function getUserPolls(limit = 10, offset = 0, search?: string) {
 // ==================== CREATE POLL ====================
 export async function createPoll(formData: FormData) {
   try {
-    const userId = await getUserId();
+    const session = await getServerSession(authOptions) as Session | null;
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('User not authenticated');
+
+    // Freemium Limitation Check
+    if (session?.user?.role === 'CREATOR') {
+      // 1. Limit number of options
+      const options = formData.getAll('options');
+      if (options.length > 4) {
+        return { success: false, error: 'Free creators can only add up to 4 options per poll. Please upgrade for unlimited options.' };
+      }
+
+      // 2. Limit number of active polls
+      const activePollsCount = await db.poll.count({
+        where: { authorId: userId },
+      });
+      if (activePollsCount >= 3) {
+        return { success: false, error: 'Free creators can only have up to 3 active polls. Please upgrade for unlimited polls.' };
+      }
+    }
+
     const dueRaw = formData.get('due_date');
     const descRaw = formData.get('description');
+    const tagsRaw = formData.get('tags');
 
     const validated = createPollSchema.safeParse({
       title: formData.get('title'),
       description: typeof descRaw === 'string' ? descRaw : undefined,
       options: formData.getAll('options'),
       due_date: typeof dueRaw === 'string' ? dueRaw : undefined,
+      tags: typeof tagsRaw === 'string' ? tagsRaw : undefined,
     });
 
     if (!validated.success) {
@@ -95,7 +119,19 @@ export async function createPoll(formData: FormData) {
       return { success: false, error: allErrors.join(', ') };
     }
 
-    const { title, description, options, due_date } = validated.data;
+    const { title, description, options, due_date, tags } = validated.data;
+
+    const tagOperations = tags
+      ? tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => {
+          return db.tag.upsert({
+            where: { name: tag },
+            update: {},
+            create: { name: tag },
+          });
+        })
+      : [];
+
+    const createdTags = await db.$transaction(tagOperations);
 
     const poll = await db.poll.create({
       data: {
@@ -104,8 +140,13 @@ export async function createPoll(formData: FormData) {
         authorId: userId,
         dueDate: due_date ? new Date(due_date) : null,
         options: { create: options.map(text => ({ text })) },
+        tags: {
+          create: createdTags.map(tag => ({
+            tag: { connect: { id: tag.id } },
+          })),
+        },
       },
-      include: { options: true },
+      include: { options: true, tags: { include: { tag: true } } },
     });
 
     revalidatePath('/dashboard/polls');
@@ -122,6 +163,7 @@ export async function updatePoll(pollId: string, formData: FormData) {
 
     const dueRaw = formData.get('due_date');
     const descRaw = formData.get('description');
+    const tagsRaw = formData.get('tags');
 
     const validated = updatePollSchema.safeParse({
       title: formData.get('title'),
@@ -129,6 +171,7 @@ export async function updatePoll(pollId: string, formData: FormData) {
       options: formData.getAll('options'),
       optionIds: formData.getAll('optionIds'),
       due_date: typeof dueRaw === 'string' ? dueRaw : undefined,
+      tags: typeof tagsRaw === 'string' ? tagsRaw : undefined,
     });
 
     if (!validated.success) {
@@ -138,12 +181,32 @@ export async function updatePoll(pollId: string, formData: FormData) {
     const poll = await db.poll.findUnique({ where: { id: pollId } });
     if (!poll || poll.authorId !== userId) return { success: false, error: 'Not authorized' };
 
+    const { title, description, due_date, tags } = validated.data;
+
+    const tagOperations = tags
+      ? tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => {
+          return db.tag.upsert({
+            where: { name: tag },
+            update: {},
+            create: { name: tag },
+          });
+        })
+      : [];
+
+    const createdTags = await db.$transaction(tagOperations);
+
     await db.poll.update({
       where: { id: pollId },
       data: {
-        title: validated.data.title,
-        description: validated.data.description ?? null,
-        dueDate: validated.data.due_date ? new Date(validated.data.due_date) : null,
+        title,
+        description: description ?? null,
+        dueDate: due_date ? new Date(due_date) : null,
+        tags: {
+          deleteMany: {},
+          create: createdTags.map(tag => ({
+            tag: { connect: { id: tag.id } },
+          })),
+        },
       },
     });
 
@@ -185,6 +248,17 @@ export async function deletePoll(pollId: string) {
 export async function votePoll(pollId: string, optionId: string) {
   try {
     const userId = await getUserId();
+
+    // Check if the poll is past its due date
+    const poll = await db.poll.findUnique({
+      where: { id: pollId },
+      select: { dueDate: true },
+    });
+
+    if (poll?.dueDate && new Date(poll.dueDate) < new Date()) {
+      return { success: false, error: 'This poll has already closed.' };
+    }
+
     const existingVote = await db.vote.findFirst({ where: { pollId, userId } });
     if (existingVote) return { success: false, error: 'Already voted' };
 
@@ -199,12 +273,31 @@ export async function votePoll(pollId: string, optionId: string) {
 // ==================== COMMENTS ====================
 export async function addComment(pollId: string, text: string) {
   try {
-    const userId = await getUserId();
+    const session = await getServerSession(authOptions) as Session | null;
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('User not authenticated');
+
+    const poll = await db.poll.findUnique({
+      where: { id: pollId },
+      include: { author: true },
+    });
+    if (!poll) throw new Error('Poll not found');
+
     await db.comment.create({ data: { text, pollId, authorId: userId } });
+
+    // Create notification for poll author
+    if (poll.authorId !== userId) {
+      await db.notification.create({
+        data: {
+          recipientId: poll.authorId,
+          pollId: pollId,
+          message: `${session?.user?.name || 'Someone'} commented on your poll: "${poll.title}"`,
+        },
+      });
+    }
 
     // Notify admins via Resend
     if (process.env.RESEND_API_KEY) {
-      const poll = await db.poll.findUnique({ where: { id: pollId }, select: { title: true } });
       const admins = await db.user.findMany({ where: { role: 'admin' }, select: { email: true } });
       const resend = new Resend(process.env.RESEND_API_KEY);
 

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { Session } from 'next-auth'
 
 type AISummaryParsed = {
   summary?: string
@@ -29,6 +32,13 @@ function safeParseAIContent(content: string): AISummaryParsed {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = (await getServerSession(authOptions)) as Session | null
+    const userRole = session?.user?.role
+    
+    if (userRole !== 'PREMIUM_CREATOR' && userRole !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = (await req.json()) as { pollId?: string } | unknown
     const pollId =
       typeof body === 'object' && body !== null && 'pollId' in body ? (body as any).pollId : undefined

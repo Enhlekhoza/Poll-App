@@ -8,32 +8,63 @@ datasource db {
 }
 
 model User {
-  id        String         @id @default(cuid())
-  email     String         @unique
-  password  String?
-  name      String?
-  image     String?
-  role      String         @default("user")
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  comments  Comment[]
-  polls     Poll[]
-  votes     Vote[]
-
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String?
+  name          String?
+  image         String?
+  // Allowed roles: "USER", "CREATOR", "PREMIUM_CREATOR", "ADMIN"
+  role          String         @default("USER")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  comments      Comment[]
+  polls         Poll[]
+  votes         Vote[]
+  notifications Notification[]
+}
+  
+  model Notification {
+    id          String   @id @default(cuid())
+    message     String
+    read        Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    recipientId String
+    recipient   User     @relation(fields: [recipientId], references: [id])
+    pollId      String?
+    poll        Poll?    @relation(fields: [pollId], references: [id])
+  }
+  
+  model Poll {
+  id               String    @id @default(cuid())
+  title            String
+  description      String?
+  visibility       String    @default("PUBLIC") // PUBLIC, UNLISTED
+  authorId         String
+  dueDate          DateTime?
+  notificationSent Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  comments         Comment[]
+  options          Option[]
+  author           User      @relation(fields: [authorId], references: [id])
+  votes            Vote[]
+  tags             TagsOnPolls[]
+  notifications    Notification[]
+}
+  
+  model Tag {
+    id    String @id @default(cuid())
+  name  String @unique
+  polls TagsOnPolls[]
 }
 
-model Poll {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  authorId    String
-  dueDate     DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  comments    Comment[]
-  options     Option[]
-  author      User      @relation(fields: [authorId], references: [id])
-  votes       Vote[]
+model TagsOnPolls {
+  poll   Poll   @relation(fields: [pollId], references: [id])
+  pollId String
+  tag    Tag    @relation(fields: [tagId], references: [id])
+  tagId  String
+
+  @@id([pollId, tagId])
 }
 
 model Option {

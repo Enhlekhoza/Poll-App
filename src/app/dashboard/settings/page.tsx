@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +20,7 @@ interface SafeUser {
 export default function SettingsPage() {
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const { update } = useSession()
 
   const safeUser: SafeUser = {
     name: user?.name || "",
@@ -45,30 +47,44 @@ export default function SettingsPage() {
       toast.error(error || "Failed to update profile")
     } else {
       toast.success("Profile updated")
+      try {
+        // Refresh NextAuth session so updated name reflects immediately and after reload
+        await update({ name })
+      } catch {}
     }
   }
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
+      <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>
           <CardDescription>Update your profile details.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <form onSubmit={handleSave} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
+        <CardContent className="space-y-8">
+          <form onSubmit={handleSave} className="space-y-8">
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <div className="h-10 flex items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700">
+                  {safeUser.email}
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  className="h-10 rounded-md border border-slate-200 bg-slate-50 px-3 text-sm"
+                />
               </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Email</p>
-              <p className="text-lg font-semibold">{safeUser.email}</p>
-            </div>
+
             <div className="flex justify-end">
               <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
             </div>

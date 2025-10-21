@@ -13,6 +13,7 @@ import { updateProfile } from "@/lib/actions/user-actions"
 import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm"
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection"
 
+import ProfileAvatarUpload from "@/components/settings/ProfileAvatarUpload";
 import NotificationSettings from "@/components/settings/NotificationSettings"
 import BillingSettings from "@/components/settings/BillingSettings"
 

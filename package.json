@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "echo 'ESLint is silenced.'",
     "db:push": "prisma db push",
-    "index": "tsx scripts/index-polls.ts"
+    "index": "tsx scripts/index-polls.ts",
+    "test": "npx jest"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

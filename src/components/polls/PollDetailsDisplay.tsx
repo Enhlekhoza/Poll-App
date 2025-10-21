@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import { getPollById, votePoll } from "@/lib/actions/poll-actions"
 import { Poll } from "@/types/index"
@@ -14,6 +12,8 @@ import Link from "next/link"
 import { SharePoll } from "./SharePoll"
 import { CommentForm } from "./CommentForm"
 import { CommentList } from "./CommentList"
+import { PremiumModal } from "@/components/layout/PremiumModal"
+import { useSession } from "next-auth/react"
 
 interface PollDetailsDisplayProps {
   pollId: string
@@ -29,7 +29,9 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<{ summary: string; nextActions: string[] } | null>(null);
   const [showSummaryDialog, setShowSummaryDialog] = useState(false);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const { user } = useAuth()
+  const { data: session } = useSession()
 
   const fetchPoll = async () => {
     setLoading(true)
@@ -85,6 +87,11 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
   };
 
   const handleSummarize = async () => {
+    if (session?.user?.plan === "FREE") {
+      setIsPremiumModalOpen(true);
+      return;
+    }
+
     setIsSummarizing(true);
     try {
       const res = await fetch('/api/ai/summarize', {
@@ -130,6 +137,12 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
 
   return (
     <div className="container mx-auto py-8">
+      <PremiumModal
+        isOpen={isPremiumModalOpen}
+        onClose={() => setIsPremiumModalOpen(false)}
+        featureName="AI Result Summarization"
+        featureDescription="Get AI-powered summaries of your poll results with our Premium plan."
+      />
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="text-3xl font-bold">{poll.title}</CardTitle>
@@ -189,9 +202,25 @@ export function PollDetailsDisplay({ pollId, isDashboardView = false }: PollDeta
             )}
             <SharePoll pollId={poll.id} />
             {isDashboardView && user?.id === poll.author?.id && (
-              <Button size="sm" onClick={handleSummarize} disabled={isSummarizing}>
-                {isSummarizing ? <LoadingSpinner className="mr-2" /> : "Summarize with AI"}
-              </Button>
+              <>
+                <Button size="sm" onClick={handleSummarize} disabled={isSummarizing}>
+                  {isSummarizing ? <LoadingSpinner className="mr-2" /> : "Summarize with AI"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (session?.user?.plan === "FREE") {
+                      setIsPremiumModalOpen(true);
+                    } else {
+                      // TODO: Implement advanced analytics page
+                      toast.info("Advanced analytics coming soon!");
+                    }
+                  }}
+                >
+                  Advanced Analytics
+                </Button>
+              </>
             )}
           </div>
         </CardFooter>

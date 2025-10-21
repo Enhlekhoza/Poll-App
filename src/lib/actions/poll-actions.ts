@@ -16,6 +16,7 @@ const createPollSchema = z.object({
   options: z.array(z.string().min(1)).min(2),
   due_date: z.string().optional(),
   tags: z.string().optional(),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]),
 });
 
 const updatePollSchema = z.object({
@@ -82,25 +83,25 @@ export async function createPoll(formData: FormData) {
     if (!userId) throw new Error('User not authenticated');
 
     // Freemium Limitation Check
-    if (session?.user?.role === 'CREATOR') {
-      // 1. Limit number of options
-      const options = formData.getAll('options');
-      if (options.length > 4) {
-        return { success: false, error: 'Free creators can only add up to 4 options per poll. Please upgrade for unlimited options.' };
-      }
-
-      // 2. Limit number of active polls
-      const activePollsCount = await db.poll.count({
-        where: { authorId: userId },
-      });
-      if (activePollsCount >= 3) {
-        return { success: false, error: 'Free creators can only have up to 3 active polls. Please upgrade for unlimited polls.' };
+    if (session?.user?.plan === "FREE") {
+      const visibility = formData.get('visibility');
+      if (visibility === 'PRIVATE') {
+        const privatePollsCount = await db.poll.count({
+          where: {
+            authorId: userId,
+            visibility: 'PRIVATE',
+          },
+        });
+        if (privatePollsCount >= 3) {
+          return { success: false, error: 'You can only create up to 3 private polls on the free plan. Please upgrade for unlimited private polls.' };
+        }
       }
     }
 
     const dueRaw = formData.get('due_date');
     const descRaw = formData.get('description');
     const tagsRaw = formData.get('tags');
+    const visibilityRaw = formData.get('visibility');
 
     const validated = createPollSchema.safeParse({
       title: formData.get('title'),
@@ -108,6 +109,7 @@ export async function createPoll(formData: FormData) {
       options: formData.getAll('options'),
       due_date: typeof dueRaw === 'string' ? dueRaw : undefined,
       tags: typeof tagsRaw === 'string' ? tagsRaw : undefined,
+      visibility: visibilityRaw,
     });
 
     if (!validated.success) {
@@ -119,7 +121,7 @@ export async function createPoll(formData: FormData) {
       return { success: false, error: allErrors.join(', ') };
     }
 
-    const { title, description, options, due_date, tags } = validated.data;
+    const { title, description, options, due_date, tags, visibility } = validated.data;
 
     const tagOperations = tags
       ? tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => {
@@ -139,6 +141,7 @@ export async function createPoll(formData: FormData) {
         description: description ?? null,
         authorId: userId,
         dueDate: due_date ? new Date(due_date) : null,
+        visibility,
         options: { create: options.map(text => ({ text })) },
         tags: {
           create: createdTags.map(tag => ({

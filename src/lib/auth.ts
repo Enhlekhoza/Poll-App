@@ -11,6 +11,7 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
+      plan: string;
     } & DefaultSession["user"];
   }
 }
@@ -28,7 +29,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials.password) return null;
 
         const user = await db.user.findUnique({ where: { email: credentials.email } });
-        if (!user) return null;
+        if (!user || !user.password) return null;
 
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
@@ -45,10 +46,15 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.name = user.name;
-        token.picture = (user as any).image;
+        // This is the initial sign-in
+        const dbUser = await db.user.findUnique({ where: { id: user.id } });
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          token.plan = dbUser.plan;
+          token.name = dbUser.name;
+          token.picture = dbUser.image;
+        }
       }
       return token;
     },
@@ -56,8 +62,9 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.plan = token.plan as string;
         if (token.name) session.user.name = token.name as string;
-        if (token.picture) (session.user as any).image = token.picture as string;
+        if (token.picture) session.user.image = token.picture as string;
       }
       return session;
     },

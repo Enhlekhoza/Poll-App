@@ -7,14 +7,30 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+  FormLabel,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { X, Plus, Vote, FileText, ListChecks, Calendar, Tag as TagIcon, Upload, Wand2 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { createPoll } from "@/lib/actions/poll-actions";
 import { useState, useEffect } from "react";
-
+import { useSession } from "next-auth/react";
+import { PremiumModal } from "@/components/layout/PremiumModal";
+import { db } from "@/lib/prisma";
 
 // Define the schema for the form, ensuring at least two options are provided.
 const pollFormSchema = z.object({
@@ -22,6 +38,7 @@ const pollFormSchema = z.object({
   description: z.string().optional(),
   dueDate: z.string().optional(),
   tags: z.string().optional(), // comma-separated for now
+  visibility: z.enum(["PUBLIC", "PRIVATE"]),
   options: z
     .array(
       z.object({
@@ -35,8 +52,24 @@ type PollFormValues = z.infer<typeof pollFormSchema>;
 
 export default function CreatePollPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [privatePollCount, setPrivatePollCount] = useState(0);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+
+  useEffect(() => {
+    async function fetchPrivatePollCount() {
+      if (session?.user?.id) {
+        const response = await fetch(`/api/user/private-poll-count`);
+        const data = await response.json();
+        if (response.ok) {
+          setPrivatePollCount(data.count);
+        }
+      }
+    }
+    fetchPrivatePollCount();
+  }, [session]);
 
   const form = useForm<PollFormValues>({
     resolver: zodResolver(pollFormSchema),
@@ -45,6 +78,7 @@ export default function CreatePollPage() {
       description: "",
       dueDate: "",
       tags: "",
+      visibility: "PUBLIC",
       options: [{ value: "" }, { value: "" }],
     },
     mode: "onChange",
@@ -93,6 +127,15 @@ export default function CreatePollPage() {
   };
 
   const onSubmit = async (data: PollFormValues) => {
+    if (
+      session?.user?.plan === "FREE" &&
+      data.visibility === "PRIVATE" &&
+      privatePollCount >= 3
+    ) {
+      setIsPremiumModalOpen(true);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("title", data.title);
     if (data.description) formData.append("description", data.description);
@@ -105,6 +148,7 @@ export default function CreatePollPage() {
       }
     }
     if (data.tags) formData.append("tags", data.tags);
+    formData.append("visibility", data.visibility);
     data.options.forEach((option) => formData.append("options", option.value.trim()));
 
     const result = await createPoll(formData);
@@ -242,6 +286,12 @@ export default function CreatePollPage() {
 
   return (
     <ProtectedRoute>
+      <PremiumModal
+        isOpen={isPremiumModalOpen}
+        onClose={() => setIsPremiumModalOpen(false)}
+        featureName="Private Polls"
+        featureDescription="Create unlimited private polls with our Premium plan."
+      />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -272,31 +322,53 @@ export default function CreatePollPage() {
                       <Wand2 className="w-5 h-5 text-purple-600" />
                       AI Assist & Import
                     </h3>
-                    <div className="flex flex-col md:flex-row gap-3">
-                      <Input
-                        className="flex-1"
-                        placeholder="Describe your poll (e.g., Feedback on new feature launch)"
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        onKeyDown={async (e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleGenerate();
-                          }
-                        }}
-                        disabled={isGenerating}
-                      />
-                      <Button type="button" className="md:w-auto" onClick={handleGenerate} disabled={isGenerating || !aiPrompt.trim()}>
-                        {isGenerating ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                            Generating...
-                          </>
-                        ) : (
-                          "Generate"
-                        )}
-                      </Button>
-                    </div>
+                    {session?.user?.plan === "FREE" ? (
+                      <div className="flex flex-col md:flex-row gap-3">
+                        <Input
+                          className="flex-1"
+                          placeholder="Describe your poll (e.g., Feedback on new feature launch)"
+                          disabled
+                        />
+                        <Button
+                          type="button"
+                          className="md:w-auto"
+                          onClick={() => setIsPremiumModalOpen(true)}
+                        >
+                          Generate with AI
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col md:flex-row gap-3">
+                        <Input
+                          className="flex-1"
+                          placeholder="Describe your poll (e.g., Feedback on new feature launch)"
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleGenerate();
+                            }
+                          }}
+                          disabled={isGenerating}
+                        />
+                        <Button
+                          type="button"
+                          className="md:w-auto"
+                          onClick={handleGenerate}
+                          disabled={isGenerating || !aiPrompt.trim()}
+                        >
+                          {isGenerating ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                              Generating...
+                            </>
+                          ) : (
+                            "Generate"
+                          )}
+                        </Button>
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-3 flex-wrap">
                       <input
@@ -387,7 +459,7 @@ export default function CreatePollPage() {
                     />
                   </div>
 
-                  {/* Due Date & Tags */}
+                  {/* Due Date, Tags, and Visibility */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
@@ -420,6 +492,32 @@ export default function CreatePollPage() {
                             <FormControl>
                               <Input placeholder="e.g. marketing, survey, 2025" className="border-2 border-gray-200 focus:border-blue-500" {...field} />
                             </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <ListChecks className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Visibility</h3>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="visibility"
+                        render={({ field }) => (
+                          <FormItem>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select visibility" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="PUBLIC">Public</SelectItem>
+                                <SelectItem value="PRIVATE">Private</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,8 +19,13 @@ export default function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (session) {
+      router.replace("/dashboard/polls");
+    }
+  }, [session, router]);
+
   if (session) {
-    router.replace("/dashboard/polls");
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <p className="text-center">Redirecting to dashboard...</p>

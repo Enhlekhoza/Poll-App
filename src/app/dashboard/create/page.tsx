@@ -377,46 +377,51 @@ export default function CreatePollPage() {
                     </div>
                   )}
 
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <input
-                        type="file"
-                        accept=".txt,.csv,.json"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handleImportFile(f);
-                        }}
-                        className="block w-full md:w-auto text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      <Button type="button" variant="outline" size="sm" onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}>
-                        <Upload className="w-4 h-4 mr-2" /> Choose file
-                      </Button>
-                    </div>
+                  {/* File Upload & Template Section - Only show for premium users */}
+                  {session?.user?.plan === "PREMIUM" && (
+                    <>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <input
+                          type="file"
+                          accept=".txt,.csv,.json"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleImportFile(f);
+                          }}
+                          className="block w-full md:w-auto text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        <Button type="button" variant="outline" size="sm" onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}>
+                          <Upload className="w-4 h-4 mr-2" /> Choose file
+                        </Button>
+                      </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("json")}>
-                        Download JSON template
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("csv")}>
-                        Download CSV template
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("txt")}>
-                        Download TXT template
-                      </Button>
-                    </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("json")}>
+                          Download JSON template
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("csv")}>
+                          Download CSV template
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleDownloadTemplate("txt")}>
+                          Download TXT template
+                        </Button>
+                      </div>
 
-                    <div className="text-xs text-gray-500 space-y-2 bg-gray-50 p-3 rounded-md">
-  <p>
-    <strong>JSON</strong>: {"{\"title\",\"description\",\"options\":[]}"}
-  </p>
-  <p>
-    <strong>CSV</strong>: first row = title, second = description (optional), others = options; optional meta row starting with # e.g.{" "}
-    {"# due:2025-10-07T10:00,tags:alpha,beta"}
-  </p>
-  <p>
-    <strong>TXT</strong>:{" "}
-    first line = title; optional meta line starting with #; blank line; optional description; blank line; options
-  </p>
-</div>
+                      <div className="text-xs text-gray-500 space-y-2 bg-gray-50 p-3 rounded-md">
+                        <p>
+                          <strong>JSON</strong>: {"{\"title\",\"description\",\"options\":[]}"}
+                        </p>
+                        <p>
+                          <strong>CSV</strong>: first row = title, second = description (optional), others = options; optional meta row starting with # e.g.{" "}
+                          {"# due:2025-10-07T10:00,tags:alpha,beta"}
+                        </p>
+                        <p>
+                          <strong>TXT</strong>:{" "}
+                          first line = title; optional meta line starting with #; blank line; optional description; blank line; options
+                        </p>
+                      </div>
+                    </>
+                  )}
                   {/* Title Section */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
